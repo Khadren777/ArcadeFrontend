@@ -1,0 +1,26 @@
+[
+  {
+    "Key": "mame",
+    "DisplayName": "MAME",
+    "ExecutablePath": "notepad.exe",
+    "ArgumentTemplate": "{rom}"
+  },
+  {
+    "Key": "snes9x",
+    "DisplayName": "Snes9x",
+    "ExecutablePath": "notepad.exe",
+    "ArgumentTemplate": "{rom}"
+  },
+  {
+    "Key": "genesis_plus",
+    "DisplayName": "Genesis Plus",
+    "ExecutablePath": "notepad.exe",
+    "ArgumentTemplate": "{rom}"
+  },
+  {
+    "Key": "duckstation",
+    "DisplayName": "DuckStation",
+    "ExecutablePath": "notepad.exe",
+    "ArgumentTemplate": "{rom}"
+  }
+]
