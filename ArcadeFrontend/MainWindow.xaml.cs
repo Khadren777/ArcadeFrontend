@@ -1,11 +1,14 @@
 ﻿using ArcadeFrontend.Models;
 using ArcadeFrontend.Services;
 using ArcadeFrontend.Services.Input;
+using ArcadeFrontend.Services.Launching;
+using ArcadeFrontend.Services.Library;
+using ArcadeFrontend.Services.Navigation;
 using ArcadeFrontend.Services.Sessions;
+using ArcadeFrontend.Services.State;
 using ArcadeFrontend.ViewModels;
 using System.Windows;
 using System.Windows.Input;
-using ArcadeFrontend.Services.Navigation;
 
 /// <summary>
 /// Main application window.
@@ -34,28 +37,35 @@ public partial class MainWindow : Window
         _inputRouterService = new InputRouterService();
 
         string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+
         var pathService = new PathService();
         var gameDataService = new GameDataService(baseDirectory);
         var recentGamesService = new RecentGamesService(baseDirectory);
+        var libraryService = new LibraryService(gameDataService);
         var recentSessionService = new RecentSessionService(recentGamesService);
         var favoritesService = new FavoritesService(gameDataService);
+        var adminUnlockService = new AdminUnlockService(new[] { Key.Up, Key.Up, Key.Down, Key.Down, Key.Enter });
+        var adminStateService = new AdminStateService(adminUnlockService);
+        var attractModeService = new AttractModeService(TimeSpan.FromSeconds(15));
+        var idleStateService = new IdleStateService(attractModeService);
         var navigationStateService = new NavigationStateService();
+        var gameLauncherService = new GameLauncherService(pathService);
+        var launchFlowService = new LaunchFlowService(gameLauncherService, libraryService, recentSessionService);
 
         var mainWindowViewModel = new MainWindowViewModel(
-            gameDataService,
-            recentGamesService,
-            new GameLauncherService(pathService),
-            new AdminUnlockService(new[] { Key.Up, Key.Up, Key.Down, Key.Down, Key.Enter }),
-            new AttractModeService(TimeSpan.FromSeconds(15)),
-            new MenuDefinitionService(),
+            libraryService,
+            launchFlowService,
+            navigationStateService,
             recentSessionService,
             favoritesService,
-            navigationStateService);
+            adminStateService,
+            idleStateService,
+            new MenuDefinitionService(),
+            pathService);
 
         _shellViewModel = new ShellViewModel(mainWindowViewModel);
 
-        // Transitional: UI still binds to MainWindowViewModel while shell/input
-        // responsibilities are being introduced.
+        // Keep the existing view binding model intact for now.
         DataContext = _shellViewModel.Main;
     }
 
@@ -78,8 +88,6 @@ public partial class MainWindow : Window
 
         if (!handled)
         {
-            // Transitional fallback: keep legacy key routing available while
-            // the new input model is being phased in.
             handled = _shellViewModel.Main.HandleKey(e.Key, out errorMessage);
         }
 

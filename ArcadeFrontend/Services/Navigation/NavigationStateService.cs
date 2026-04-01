@@ -1,7 +1,7 @@
 ﻿using ArcadeFrontend.Models;
 
 /// <summary>
-/// Owns navigation state for the frontend.
+/// Owns screen and navigation state for the frontend.
 /// </summary>
 namespace ArcadeFrontend.Services.Navigation;
 
@@ -17,12 +17,7 @@ public sealed class NavigationStateService
     public ScreenType CurrentScreen => _currentScreen;
 
     /// <summary>
-    /// Gets the screen that was active before attract mode started.
-    /// </summary>
-    public ScreenType ScreenBeforeAttractMode => _screenBeforeAttractMode;
-
-    /// <summary>
-    /// Gets the currently selected system key.
+    /// Gets the selected system key.
     /// </summary>
     public string SelectedSystem => _selectedSystem;
 
@@ -52,7 +47,7 @@ public sealed class NavigationStateService
     }
 
     /// <summary>
-    /// Sets the selected system and enters the games menu.
+    /// Sets the active system and opens the games menu.
     /// </summary>
     public void OpenSystem(string systemKey)
     {
@@ -61,7 +56,7 @@ public sealed class NavigationStateService
     }
 
     /// <summary>
-    /// Resolves backward navigation from the current screen.
+    /// Resolves the back-navigation target for the current screen.
     /// </summary>
     public ScreenType ResolveBackTarget()
     {
