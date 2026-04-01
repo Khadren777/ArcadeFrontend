@@ -1,23 +1,25 @@
 ﻿using System.Windows;
 using System.Windows.Input;
+using ArcadeFrontend.Models;
 using ArcadeFrontend.Services;
+using ArcadeFrontend.Services.Input;
 using ArcadeFrontend.ViewModels;
 
 /// <summary>
 /// Main application window.
 ///
 /// Responsible only for:
-/// - Composing services and view models
-/// - Forwarding input
-/// - Handling window lifecycle
-///
-/// All business logic remains outside this class.
+/// - composing services and view models
+/// - forwarding input into the input pipeline
+/// - handling window lifecycle concerns
 /// </summary>
 namespace ArcadeFrontend;
 
 public partial class MainWindow : Window
 {
     private readonly ShellViewModel _shellViewModel;
+    private readonly KeyboardInputMapper _keyboardInputMapper;
+    private readonly InputRouterService _inputRouterService;
 
     /// <summary>
     /// Initializes the application shell and composes dependencies.
@@ -26,7 +28,15 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
 
+        _keyboardInputMapper = new KeyboardInputMapper();
+        _inputRouterService = new InputRouterService();
+
         string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+
+        // IMPORTANT:
+        // Keep this constructor block aligned to your CURRENT local repo state.
+        // If you already added PathService and GameLauncherService(pathService),
+        // preserve that exact wiring here.
         var pathService = new PathService();
 
         var mainWindowViewModel = new MainWindowViewModel(
@@ -40,7 +50,8 @@ public partial class MainWindow : Window
 
         _shellViewModel = new ShellViewModel(mainWindowViewModel);
 
-        // Transitional: still binding directly to MainWindowViewModel
+        // Transitional: UI still binds to MainWindowViewModel while shell/input
+        // responsibilities are being introduced.
         DataContext = _shellViewModel.Main;
     }
 
@@ -54,11 +65,19 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Routes keyboard input into the application.
+    /// Routes keyboard input through the action-based input pipeline.
     /// </summary>
     private void Window_KeyDown(object sender, KeyEventArgs e)
     {
-        bool handled = _shellViewModel.Main.HandleKey(e.Key, out string? errorMessage);
+        AppAction action = _keyboardInputMapper.Map(e.Key);
+        bool handled = _inputRouterService.Route(action, _shellViewModel, out string? errorMessage);
+
+        if (!handled)
+        {
+            // Transitional fallback: keep legacy key routing available while
+            // the new input model is being phased in.
+            handled = _shellViewModel.Main.HandleKey(e.Key, out errorMessage);
+        }
 
         if (!string.IsNullOrWhiteSpace(errorMessage))
         {
