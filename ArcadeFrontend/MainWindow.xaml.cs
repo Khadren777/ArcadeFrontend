@@ -1,9 +1,10 @@
-﻿using System.Windows;
-using System.Windows.Input;
-using ArcadeFrontend.Models;
+﻿using ArcadeFrontend.Models;
 using ArcadeFrontend.Services;
 using ArcadeFrontend.Services.Input;
+using ArcadeFrontend.Services.Sessions;
 using ArcadeFrontend.ViewModels;
+using System.Windows;
+using System.Windows.Input;
 
 /// <summary>
 /// Main application window.
@@ -32,21 +33,21 @@ public partial class MainWindow : Window
         _inputRouterService = new InputRouterService();
 
         string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
-
-        // IMPORTANT:
-        // Keep this constructor block aligned to your CURRENT local repo state.
-        // If you already added PathService and GameLauncherService(pathService),
-        // preserve that exact wiring here.
         var pathService = new PathService();
+        var gameDataService = new GameDataService(baseDirectory);
+        var recentGamesService = new RecentGamesService(baseDirectory);
+        var recentSessionService = new RecentSessionService(recentGamesService);
+        var favoritesService = new FavoritesService(gameDataService);
 
         var mainWindowViewModel = new MainWindowViewModel(
-            new GameDataService(baseDirectory),
-            new RecentGamesService(baseDirectory),
+            gameDataService,
+            recentGamesService,
             new GameLauncherService(pathService),
             new AdminUnlockService(new[] { Key.Up, Key.Up, Key.Down, Key.Down, Key.Enter }),
             new AttractModeService(TimeSpan.FromSeconds(15)),
             new MenuDefinitionService(),
-            pathService);
+            recentSessionService,
+            favoritesService);
 
         _shellViewModel = new ShellViewModel(mainWindowViewModel);
 
