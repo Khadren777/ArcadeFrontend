@@ -5,12 +5,12 @@ using ArcadeFrontend.ViewModels;
 
 /// <summary>
 /// Main application window.
-/// 
+///
 /// Responsible only for:
 /// - Composing services and view models
 /// - Forwarding input
 /// - Handling window lifecycle
-/// 
+///
 /// All business logic remains outside this class.
 /// </summary>
 namespace ArcadeFrontend;
@@ -27,14 +27,16 @@ public partial class MainWindow : Window
         InitializeComponent();
 
         string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+        var pathService = new PathService();
 
         var mainWindowViewModel = new MainWindowViewModel(
             new GameDataService(baseDirectory),
             new RecentGamesService(baseDirectory),
-            new GameLauncherService(),
+            new GameLauncherService(pathService),
             new AdminUnlockService(new[] { Key.Up, Key.Up, Key.Down, Key.Down, Key.Enter }),
             new AttractModeService(TimeSpan.FromSeconds(15)),
-            new MenuDefinitionService());
+            new MenuDefinitionService(),
+            pathService);
 
         _shellViewModel = new ShellViewModel(mainWindowViewModel);
 

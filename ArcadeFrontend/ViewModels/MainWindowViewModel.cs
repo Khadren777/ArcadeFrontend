@@ -11,11 +11,11 @@ using ArcadeFrontend.Services;
 /// exposes public wrapper methods so input handling can be gradually moved
 /// out of raw key-based logic and into action-based routing.
 /// </summary>
-namespace ArcadeFrontend.ViewModels;
+namespace ArcadeFrontend.ViewModels { 
 
 public class MainWindowViewModel : ViewModelBase
 {
-    private readonly GameDataService _gameDataService;
+        private readonly GameDataService _gameDataService;
         private readonly RecentGamesService _recentGamesService;
         private readonly GameLauncherService _gameLauncherService;
         private readonly AdminUnlockService _adminUnlockService;
