@@ -1,15 +1,21 @@
 ﻿using System.Collections.ObjectModel;
+using System.IO;
 using System.Windows.Input;
 using ArcadeFrontend.Models;
 using ArcadeFrontend.Services;
-using System.IO;
-using System.Windows;
 
-namespace ArcadeFrontend.ViewModels
+/// <summary>
+/// Primary application view model for the current transitional architecture.
+///
+/// This class still owns most navigation and orchestration behavior, but now
+/// exposes public wrapper methods so input handling can be gradually moved
+/// out of raw key-based logic and into action-based routing.
+/// </summary>
+namespace ArcadeFrontend.ViewModels;
+
+public class MainWindowViewModel : ViewModelBase
 {
-    public class MainWindowViewModel : ViewModelBase
-    {
-        private readonly GameDataService _gameDataService;
+    private readonly GameDataService _gameDataService;
         private readonly RecentGamesService _recentGamesService;
         private readonly GameLauncherService _gameLauncherService;
         private readonly AdminUnlockService _adminUnlockService;
@@ -129,7 +135,173 @@ namespace ArcadeFrontend.ViewModels
             RenderCurrentScreen();
         }
 
-        private void ValidateEnvironment()
+        /// <summary>
+        /// Resets idle tracking in response to user interaction.
+        /// </summary>
+        public void NotifyUserInteraction()
+        {
+            if (_isInAttractMode)
+            {
+                ExitAttractMode();
+                return;
+            }
+
+            _attractModeService.Reset();
+        }
+
+        /// <summary>
+        /// Moves the current selection upward.
+        /// </summary>
+        public void MoveSelectionUp()
+        {
+            if (_isInAttractMode)
+            {
+                ExitAttractMode();
+                return;
+            }
+
+            _attractModeService.Reset();
+            MoveSelection(-1);
+        }
+
+        /// <summary>
+        /// Moves the current selection downward.
+        /// </summary>
+        public void MoveSelectionDown()
+        {
+            if (_isInAttractMode)
+            {
+                ExitAttractMode();
+                return;
+            }
+
+            _attractModeService.Reset();
+            MoveSelection(1);
+        }
+
+        /// <summary>
+        /// Handles leftward input.
+        ///
+        /// This is currently a no-op placeholder so the input layer can standardize
+        /// on directional actions before horizontal navigation is fully implemented.
+        /// </summary>
+        public void MoveSelectionLeft()
+        {
+            if (_isInAttractMode)
+            {
+                ExitAttractMode();
+                return;
+            }
+
+            _attractModeService.Reset();
+        }
+
+        /// <summary>
+        /// Handles rightward input.
+        ///
+        /// In the current transitional UX, right maps to favorite toggle.
+        /// This preserves existing cabinet/keyboard behavior until a fuller grid
+        /// or horizontal navigation model is introduced.
+        /// </summary>
+        public void MoveSelectionRight()
+        {
+            ToggleSelectedFavorite();
+        }
+
+        /// <summary>
+        /// Activates the currently selected item.
+        /// </summary>
+        public bool SelectCurrent(out string? errorMessage)
+        {
+            if (_isInAttractMode)
+            {
+                ExitAttractMode();
+                errorMessage = null;
+                return true;
+            }
+
+            _attractModeService.Reset();
+            ActivateSelectedItem(out errorMessage);
+            return true;
+        }
+
+        /// <summary>
+        /// Navigates backward or exits the application when appropriate.
+        /// </summary>
+        public void NavigateBack()
+        {
+            if (_isInAttractMode)
+            {
+                ExitAttractMode();
+                return;
+            }
+
+            _attractModeService.Reset();
+            HandleBackOrExit();
+        }
+
+        /// <summary>
+        /// Toggles favorite state for the currently selected game.
+        /// </summary>
+        public void ToggleSelectedFavorite()
+        {
+            if (_isInAttractMode)
+            {
+                ExitAttractMode();
+                return;
+            }
+
+            _attractModeService.Reset();
+            ToggleFavorite();
+        }
+
+        /// <summary>
+        /// Registers one admin unlock input pulse.
+        /// </summary>
+        public bool RegisterAdminPulse(Key key)
+        {
+            if (_isInAttractMode)
+            {
+                ExitAttractMode();
+                return true;
+            }
+
+            _attractModeService.Reset();
+
+            if (_adminUnlockService.TrackKey(key))
+            {
+                NavigateTo(ScreenType.AdminMenu);
+                StatusText = "Admin unlocked";
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Opens service or admin mode when available.
+        /// </summary>
+        public void OpenServiceMode()
+        {
+            if (_isInAttractMode)
+            {
+                ExitAttractMode();
+                return;
+            }
+
+            _attractModeService.Reset();
+            NavigateTo(ScreenType.AdminMenu);
+        }
+
+        /// <summary>
+        /// Exits attract mode if it is active.
+        /// </summary>
+        public void TryExitAttractMode()
+        {
+            ExitAttractMode();
+        }
+
+    private void ValidateEnvironment()
         {
             List<string> issues = new();
 
@@ -221,6 +393,9 @@ namespace ArcadeFrontend.ViewModels
             }
         }
 
+        /// <summary>
+        /// Handles raw keyboard input for the current transitional input path.
+        /// </summary>
         public bool HandleKey(Key key, out string? errorMessage)
         {
             errorMessage = null;
@@ -231,35 +406,30 @@ namespace ArcadeFrontend.ViewModels
                 return true;
             }
 
-            _attractModeService.Reset();
-
-            if (_adminUnlockService.TrackKey(key))
+            if (RegisterAdminPulse(key))
             {
-                NavigateTo(ScreenType.AdminMenu);
-                StatusText = "Admin unlocked";
                 return true;
             }
 
             switch (key)
             {
                 case Key.Up:
-                    MoveSelection(-1);
+                    MoveSelectionUp();
                     return true;
 
                 case Key.Down:
-                    MoveSelection(1);
+                    MoveSelectionDown();
                     return true;
 
                 case Key.Right:
-                    ToggleFavorite();
+                    MoveSelectionRight();
                     return true;
 
                 case Key.Enter:
-                    ActivateSelectedItem(out errorMessage);
-                    return true;
+                    return SelectCurrent(out errorMessage);
 
                 case Key.Escape:
-                    HandleBackOrExit();
+                    NavigateBack();
                     return true;
 
                 default:
@@ -267,7 +437,7 @@ namespace ArcadeFrontend.ViewModels
             }
         }
 
-        private void EnsureValidSelection()
+    private void EnsureValidSelection()
         {
             if (MenuItems.Count == 0)
             {
