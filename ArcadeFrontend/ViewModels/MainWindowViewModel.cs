@@ -3,6 +3,7 @@ using System.Windows.Input;
 using ArcadeFrontend.Models;
 using ArcadeFrontend.Services;
 using ArcadeFrontend.Services.Sessions;
+using ArcadeFrontend.Services.Navigation;
 
 /// <summary>
 /// Primary application view model for the current transitional architecture.
@@ -22,13 +23,11 @@ public class MainWindowViewModel : ViewModelBase
     private readonly MenuDefinitionService _menuDefinitionService;
     private readonly RecentSessionService _recentSessionService;
     private readonly FavoritesService _favoritesService;
+    private readonly NavigationStateService _navigationStateService;
 
     private List<Game> _games = new();
     private List<EmulatorProfile> _emulatorProfiles = new();
 
-    private ScreenType _currentScreen = ScreenType.MainMenu;
-    private ScreenType _screenBeforeAttractMode = ScreenType.MainMenu;
-    private string _selectedSystem = string.Empty;
     private bool _isInAttractMode;
     private bool _shouldExit;
     private int _selectedIndex;
@@ -110,7 +109,8 @@ public class MainWindowViewModel : ViewModelBase
         AttractModeService attractModeService,
         MenuDefinitionService menuDefinitionService,
         RecentSessionService recentSessionService,
-        FavoritesService favoritesService)
+        FavoritesService favoritesService,
+        NavigationStateService navigationStateService)
     {
         _gameDataService = gameDataService;
         _recentGamesService = recentGamesService;
@@ -460,8 +460,10 @@ public class MainWindowViewModel : ViewModelBase
                 break;
 
             case MenuAction.OpenSystemGames:
-                _selectedSystem = item.Value;
-                NavigateTo(ScreenType.GamesMenu);
+                _navigationStateService.OpenSystem(item.Value);
+                SelectedIndex = 0;
+                RenderCurrentScreen();
+                RefreshSelectionState();
                 break;
 
             case MenuAction.LaunchGame:
@@ -561,7 +563,7 @@ public class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Enters attract mode and remembers the current screen.
+    /// Enters attract mode.
     /// </summary>
     private void EnterAttractMode()
     {
@@ -570,9 +572,11 @@ public class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        _screenBeforeAttractMode = _currentScreen;
         _isInAttractMode = true;
-        NavigateTo(ScreenType.AttractMode);
+        _navigationStateService.EnterAttractMode();
+        SelectedIndex = 0;
+        RenderCurrentScreen();
+        RefreshSelectionState();
     }
 
     /// <summary>
@@ -586,7 +590,10 @@ public class MainWindowViewModel : ViewModelBase
         }
 
         _isInAttractMode = false;
-        NavigateTo(_screenBeforeAttractMode);
+        _navigationStateService.ExitAttractMode();
+        SelectedIndex = 0;
+        RenderCurrentScreen();
+        RefreshSelectionState();
         _attractModeService.Reset();
     }
 
@@ -595,27 +602,13 @@ public class MainWindowViewModel : ViewModelBase
     /// </summary>
     private void HandleBackOrExit()
     {
-        switch (_currentScreen)
+        if (_navigationStateService.CurrentScreen == ScreenType.MainMenu)
         {
-            case ScreenType.GamesMenu:
-                NavigateTo(ScreenType.SystemsMenu);
-                break;
-
-            case ScreenType.HiddenGamesMenu:
-                NavigateTo(ScreenType.AdminMenu);
-                break;
-
-            case ScreenType.AdminMenu:
-            case ScreenType.RecentGamesMenu:
-            case ScreenType.SystemsMenu:
-            case ScreenType.FavoritesMenu:
-                NavigateTo(ScreenType.MainMenu);
-                break;
-
-            case ScreenType.MainMenu:
-                ShouldExit = true;
-                break;
+            ShouldExit = true;
+            return;
         }
+
+        NavigateTo(_navigationStateService.ResolveBackTarget());
     }
 
     /// <summary>
@@ -623,7 +616,7 @@ public class MainWindowViewModel : ViewModelBase
     /// </summary>
     private void NavigateTo(ScreenType targetScreen)
     {
-        _currentScreen = targetScreen;
+        _navigationStateService.NavigateTo(targetScreen);
         SelectedIndex = 0;
         RenderCurrentScreen();
         RefreshSelectionState();
@@ -654,11 +647,11 @@ public class MainWindowViewModel : ViewModelBase
     /// </summary>
     private MenuScreen BuildScreenForCurrentState()
     {
-        return _currentScreen switch
+        return _navigationStateService.CurrentScreen switch
         {
             ScreenType.MainMenu => _menuDefinitionService.BuildMainMenu(),
             ScreenType.SystemsMenu => _menuDefinitionService.BuildSystemsMenu(),
-            ScreenType.GamesMenu => _menuDefinitionService.BuildGamesMenu(_selectedSystem, _games),
+            ScreenType.GamesMenu => _menuDefinitionService.BuildGamesMenu(_navigationStateService.SelectedSystem, _games),
             ScreenType.HiddenGamesMenu => _menuDefinitionService.BuildHiddenGamesMenu(_games),
             ScreenType.AdminMenu => _menuDefinitionService.BuildAdminMenu(),
             ScreenType.RecentGamesMenu => _menuDefinitionService.BuildRecentGamesMenu(_recentSessionService.RecentGames),
@@ -691,7 +684,7 @@ public class MainWindowViewModel : ViewModelBase
     /// </summary>
     private void UpdateStatusForCurrentScreen()
     {
-        if (_currentScreen == ScreenType.AttractMode)
+        if (_navigationStateService.CurrentScreen == ScreenType.AttractMode)
         {
             StatusText = "Press any key to return";
             return;

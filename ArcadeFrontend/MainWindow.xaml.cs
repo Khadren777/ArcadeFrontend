@@ -5,6 +5,7 @@ using ArcadeFrontend.Services.Sessions;
 using ArcadeFrontend.ViewModels;
 using System.Windows;
 using System.Windows.Input;
+using ArcadeFrontend.Services.Navigation;
 
 /// <summary>
 /// Main application window.
@@ -38,6 +39,7 @@ public partial class MainWindow : Window
         var recentGamesService = new RecentGamesService(baseDirectory);
         var recentSessionService = new RecentSessionService(recentGamesService);
         var favoritesService = new FavoritesService(gameDataService);
+        var navigationStateService = new NavigationStateService();
 
         var mainWindowViewModel = new MainWindowViewModel(
             gameDataService,
@@ -47,7 +49,8 @@ public partial class MainWindow : Window
             new AttractModeService(TimeSpan.FromSeconds(15)),
             new MenuDefinitionService(),
             recentSessionService,
-            favoritesService);
+            favoritesService,
+            navigationStateService);
 
         _shellViewModel = new ShellViewModel(mainWindowViewModel);
 
