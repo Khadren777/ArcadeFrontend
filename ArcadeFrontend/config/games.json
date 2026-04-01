@@ -1,36 +1,17 @@
 [
   {
-    "Title": "Teenage Mutant Ninja Turtles",
-    "System": "Arcade",
-    "LaunchType": "Emulator",
-    "EmulatorKey": "mame",
-    "RomPath": "C:\\Games\\Arcade\\tmnt.zip"
-  },
-  {
     "Title": "X-Men",
     "System": "Arcade",
     "LaunchType": "Emulator",
     "EmulatorKey": "mame",
-    "RomPath": "C:\\Games\\Arcade\\xmen.zip"
-  },
-  {
-    "Title": "Super Mario World",
-    "System": "SNES",
-    "LaunchType": "Emulator",
-    "EmulatorKey": "snes9x",
-    "RomPath": "C:\\Games\\SNES\\smw.sfc"
-  },
-  {
-    "Title": "Sonic Mania",
-    "System": "PC Games",
-    "LaunchType": "Native",
-    "LaunchTarget": "notepad.exe"
+    "RomPath": "Games\\Arcade\\xmen.zip"
   },
   {
     "Title": "Diablo II",
     "System": "PC Games",
     "LaunchType": "Native",
-    "LaunchTarget": "notepad.exe",
+    "LaunchTarget": "Games\\PC\\Diablo2\\Diablo II.exe",
+    "WorkingDirectory": "Games\\PC\\Diablo2",
     "IsHidden": true
   }
 ]

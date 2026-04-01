@@ -1,11 +1,18 @@
-﻿using System.Diagnostics;
+﻿using ArcadeFrontend.Models;
+using System.Diagnostics;
 using System.IO;
-using ArcadeFrontend.Models;
+using System.Windows;
 
 namespace ArcadeFrontend.Services
 {
     public class GameLauncherService
     {
+        private readonly PathService _pathService;
+
+        public GameLauncherService(PathService pathService)
+        {
+            _pathService = pathService;
+        }
         public void LaunchGame(Game game, List<EmulatorProfile> emulatorProfiles)
         {
             switch (game.LaunchType)
@@ -42,21 +49,76 @@ namespace ArcadeFrontend.Services
                 throw new InvalidOperationException($"RomPath missing for game '{game.Title}'.");
             }
 
-            string arguments = BuildArguments(emulator.ArgumentTemplate, game);
+            string resolvedExecutablePath = _pathService.Resolve(emulator.ExecutablePath);
+            string resolvedRomPath = _pathService.Resolve(game.RomPath);
+            string arguments = BuildArguments(emulator.ArgumentTemplate, game, resolvedRomPath);
+
+            if (!File.Exists(resolvedExecutablePath))
+            {
+                throw new FileNotFoundException($"Emulator not found: {resolvedExecutablePath}");
+            }
+
+            if (!File.Exists(resolvedRomPath) && !Directory.Exists(resolvedRomPath))
+            {
+                throw new FileNotFoundException($"ROM not found: {resolvedRomPath}");
+            }
 
             ProcessStartInfo startInfo = new()
             {
-                FileName = emulator.ExecutablePath,
+                FileName = resolvedExecutablePath,
                 Arguments = arguments,
-                UseShellExecute = true
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WindowStyle = ProcessWindowStyle.Hidden
             };
+
+            if (string.IsNullOrWhiteSpace(startInfo.WorkingDirectory))
+            {
+                string? directory = Path.GetDirectoryName(resolvedExecutablePath);
+
+                if (!string.IsNullOrWhiteSpace(directory) && Directory.Exists(directory))
+                {
+                    startInfo.WorkingDirectory = directory;
+                }
+            }
 
             if (!string.IsNullOrWhiteSpace(emulator.WorkingDirectory))
             {
-                startInfo.WorkingDirectory = emulator.WorkingDirectory;
+                string resolvedWorkingDirectory = _pathService.Resolve(emulator.WorkingDirectory);
+
+                if (Directory.Exists(resolvedWorkingDirectory))
+                {
+                    startInfo.WorkingDirectory = resolvedWorkingDirectory;
+                }
+            }
+            else
+            {
+                string? directory = Path.GetDirectoryName(resolvedExecutablePath);
+
+                if (!string.IsNullOrWhiteSpace(directory) && Directory.Exists(directory))
+                {
+                    startInfo.WorkingDirectory = directory;
+                }
             }
 
-            Process.Start(startInfo);
+            if (!File.Exists(resolvedExecutablePath))
+            {
+                MessageBox.Show($"Emulator not found: {resolvedExecutablePath}");
+                return;
+            }
+
+            try
+            {
+                Process.Start(startInfo);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Failed to launch '{game.Title}'\n\n{ex.Message}",
+                    "Launch Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
         }
 
         private void LaunchNativeGame(Game game)
@@ -66,34 +128,69 @@ namespace ArcadeFrontend.Services
                 throw new InvalidOperationException($"LaunchTarget missing for game '{game.Title}'.");
             }
 
+            string resolvedLaunchTarget = _pathService.Resolve(game.LaunchTarget);
+
             ProcessStartInfo startInfo = new()
             {
-                FileName = game.LaunchTarget,
+                FileName = resolvedLaunchTarget,
                 Arguments = game.LaunchArguments ?? string.Empty,
-                UseShellExecute = true
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WindowStyle = ProcessWindowStyle.Hidden
             };
 
             if (!string.IsNullOrWhiteSpace(game.WorkingDirectory))
             {
-                startInfo.WorkingDirectory = game.WorkingDirectory;
-            }
-            else if (Path.IsPathRooted(game.LaunchTarget))
-            {
-                string? directory = Path.GetDirectoryName(game.LaunchTarget);
+                string resolvedWorkingDirectory = _pathService.Resolve(game.WorkingDirectory);
 
-                if (!string.IsNullOrWhiteSpace(directory))
+                if (Directory.Exists(resolvedWorkingDirectory))
                 {
-                    startInfo.WorkingDirectory = directory;
+                    startInfo.WorkingDirectory = resolvedWorkingDirectory;
+                }
+            }
+            else
+            {
+                bool hasDirectorySeparator =
+                    resolvedLaunchTarget.Contains("\\") || resolvedLaunchTarget.Contains("/");
+
+                if (hasDirectorySeparator && Path.IsPathRooted(resolvedLaunchTarget))
+                {
+                    string? directory = Path.GetDirectoryName(resolvedLaunchTarget);
+
+                    if (!string.IsNullOrWhiteSpace(directory) && Directory.Exists(directory))
+                    {
+                        startInfo.WorkingDirectory = directory;
+                    }
                 }
             }
 
-            Process.Start(startInfo);
+            if (!File.Exists(resolvedLaunchTarget))
+            {
+                MessageBox.Show($"Emulator not found: {resolvedLaunchTarget}");
+                return;
+            }
+
+            try
+            {
+                Process.Start(startInfo);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Failed to launch '{game.Title}'\n\n{ex.Message}",
+                    "Launch Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
         }
 
-        private static string BuildArguments(string template, Game game)
+        private static string BuildArguments(string template, Game game, string resolvedRomPath)
         {
+            string romName = Path.GetFileNameWithoutExtension(resolvedRomPath);
+
             return template
-                .Replace("{rom}", game.RomPath ?? string.Empty)
+                .Replace("{rom}", resolvedRomPath ?? string.Empty)
+                .Replace("{romname}", romName)
                 .Replace("{title}", game.Title ?? string.Empty);
         }
     }

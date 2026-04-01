@@ -27,6 +27,38 @@ namespace ArcadeFrontend.ViewModels
                 OnPropertyChanged();
             }
         }
+        private bool _isLaunchAvailable = true;
+        private string _launchIssue = string.Empty;
+
+        public bool IsLaunchAvailable
+        {
+            get => _isLaunchAvailable;
+            set
+            {
+                if (_isLaunchAvailable == value)
+                {
+                    return;
+                }
+
+                _isLaunchAvailable = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public string LaunchIssue
+        {
+            get => _launchIssue;
+            set
+            {
+                if (_launchIssue == value)
+                {
+                    return;
+                }
+
+                _launchIssue = value;
+                OnPropertyChanged();
+            }
+        }
 
         public event PropertyChangedEventHandler? PropertyChanged;
 

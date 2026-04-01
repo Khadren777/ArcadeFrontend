@@ -2,25 +2,22 @@
   {
     "Key": "mame",
     "DisplayName": "MAME",
-    "ExecutablePath": "notepad.exe",
-    "ArgumentTemplate": "{rom}"
+    "ExecutablePath": "Emulators\\MAME\\mame.exe",
+    "ArgumentTemplate": "{rom}",
+    "WorkingDirectory": "Emulators\\MAME"
   },
   {
     "Key": "snes9x",
     "DisplayName": "Snes9x",
-    "ExecutablePath": "notepad.exe",
-    "ArgumentTemplate": "{rom}"
-  },
-  {
-    "Key": "genesis_plus",
-    "DisplayName": "Genesis Plus",
-    "ExecutablePath": "notepad.exe",
-    "ArgumentTemplate": "{rom}"
+    "ExecutablePath": "Emulators\\Snes9x\\snes9x-x64.exe",
+    "ArgumentTemplate": "{rom}",
+    "WorkingDirectory": "Emulators\\Snes9x"
   },
   {
     "Key": "duckstation",
     "DisplayName": "DuckStation",
-    "ExecutablePath": "notepad.exe",
-    "ArgumentTemplate": "{rom}"
+    "ExecutablePath": "Emulators\\DuckStation\\duckstation-qt-x64-ReleaseLTCG.exe",
+    "ArgumentTemplate": "--fullscreen \"{rom}\"",
+    "WorkingDirectory": "Emulators\\DuckStation"
   }
 ]

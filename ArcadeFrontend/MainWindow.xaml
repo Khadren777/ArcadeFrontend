@@ -5,10 +5,11 @@
         WindowStyle="None"
         WindowState="Maximized"
         ResizeMode="NoResize"
+        Topmost="True"
         Background="Black"
         KeyDown="Window_KeyDown"
-        Loaded="Window_Loaded">
-
+        Loaded="Window_Loaded"
+        Cursor="None">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -58,6 +59,10 @@
                                 <Setter Property="Background" Value="#1E1E1E"/>
                                 <Setter Property="BorderBrush" Value="#464646"/>
                                 <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsLaunchAvailable}" Value="False">
+                                        <Setter Property="Background" Value="#3A3A3A"/>
+                                        <Setter Property="BorderBrush" Value="#666666"/>
+                                    </DataTrigger>
                                     <DataTrigger Binding="{Binding IsSelected}" Value="True">
                                         <Setter Property="Background" Value="#FFB400"/>
                                         <Setter Property="BorderBrush" Value="White"/>
@@ -75,6 +80,9 @@
                                 <Style TargetType="TextBlock">
                                     <Setter Property="Foreground" Value="White"/>
                                     <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsLaunchAvailable}" Value="False">
+                                            <Setter Property="Foreground" Value="#999999"/>
+                                        </DataTrigger>
                                         <DataTrigger Binding="{Binding IsSelected}" Value="True">
                                             <Setter Property="Foreground" Value="Black"/>
                                         </DataTrigger>

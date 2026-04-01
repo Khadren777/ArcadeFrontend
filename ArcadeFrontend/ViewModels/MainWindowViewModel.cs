@@ -2,6 +2,8 @@
 using System.Windows.Input;
 using ArcadeFrontend.Models;
 using ArcadeFrontend.Services;
+using System.IO;
+using System.Windows;
 
 namespace ArcadeFrontend.ViewModels
 {
@@ -13,6 +15,7 @@ namespace ArcadeFrontend.ViewModels
         private readonly AdminUnlockService _adminUnlockService;
         private readonly AttractModeService _attractModeService;
         private readonly MenuDefinitionService _menuDefinitionService;
+        private readonly PathService _pathService;
 
         private readonly List<Game> _recentGames = new();
         private List<Game> _games = new();
@@ -97,7 +100,8 @@ namespace ArcadeFrontend.ViewModels
             GameLauncherService gameLauncherService,
             AdminUnlockService adminUnlockService,
             AttractModeService attractModeService,
-            MenuDefinitionService menuDefinitionService)
+            MenuDefinitionService menuDefinitionService,
+            PathService pathService)
         {
             _gameDataService = gameDataService;
             _recentGamesService = recentGamesService;
@@ -105,6 +109,8 @@ namespace ArcadeFrontend.ViewModels
             _adminUnlockService = adminUnlockService;
             _attractModeService = attractModeService;
             _menuDefinitionService = menuDefinitionService;
+            _pathService = pathService;
+
 
             _attractModeService.IdleTimeoutReached += (_, _) => EnterAttractMode();
         }
@@ -117,8 +123,102 @@ namespace ArcadeFrontend.ViewModels
             _recentGames.Clear();
             _recentGames.AddRange(_recentGamesService.LoadRecentGames());
 
+            ValidateEnvironment();
+
             _attractModeService.Start();
             RenderCurrentScreen();
+        }
+
+        private void ValidateEnvironment()
+        {
+            List<string> issues = new();
+
+            foreach (var emulator in _emulatorProfiles)
+            {
+                string resolvedPath = _pathService.Resolve(emulator.ExecutablePath);
+
+                if (!File.Exists(resolvedPath))
+                {
+                    issues.Add($"Missing emulator: {emulator.DisplayName}");
+                }
+            }
+
+            if (issues.Count > 0)
+            {
+                StatusText = $"Missing dependencies: {string.Join(", ", issues)}";
+                return;
+            }
+
+            StatusText = "Ready";
+        }
+
+        private void UpdateLaunchAvailability()
+        {
+            foreach (var item in MenuItems)
+            {
+                item.IsLaunchAvailable = true;
+                item.LaunchIssue = string.Empty;
+
+                if (item.Game == null)
+                {
+                    continue;
+                }
+
+                Game game = item.Game;
+
+                if (game.LaunchType == LaunchType.Emulator)
+                {
+                    EmulatorProfile? emulator = _emulatorProfiles.FirstOrDefault(e => e.Key == game.EmulatorKey);
+
+                    if (emulator == null)
+                    {
+                        item.IsLaunchAvailable = false;
+                        item.LaunchIssue = "Missing emulator profile";
+                        continue;
+                    }
+
+                    string resolvedExecutablePath = _pathService.Resolve(emulator.ExecutablePath);
+
+                    if (!File.Exists(resolvedExecutablePath))
+                    {
+                        item.IsLaunchAvailable = false;
+                        item.LaunchIssue = "Missing emulator";
+                        continue;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(game.RomPath))
+                    {
+                        item.IsLaunchAvailable = false;
+                        item.LaunchIssue = "Missing ROM path";
+                        continue;
+                    }
+
+                    string resolvedRomPath = _pathService.Resolve(game.RomPath);
+
+                    if (!File.Exists(resolvedRomPath) && !Directory.Exists(resolvedRomPath))
+                    {
+                        item.IsLaunchAvailable = false;
+                        item.LaunchIssue = "Missing ROM";
+                    }
+                }
+                else if (game.LaunchType == LaunchType.Native)
+                {
+                    if (string.IsNullOrWhiteSpace(game.LaunchTarget))
+                    {
+                        item.IsLaunchAvailable = false;
+                        item.LaunchIssue = "Missing launch target";
+                        continue;
+                    }
+
+                    string resolvedLaunchTarget = _pathService.Resolve(game.LaunchTarget);
+
+                    if (!File.Exists(resolvedLaunchTarget))
+                    {
+                        item.IsLaunchAvailable = false;
+                        item.LaunchIssue = "Missing game executable";
+                    }
+                }
+            }
         }
 
         public bool HandleKey(Key key, out string? errorMessage)
@@ -311,6 +411,13 @@ namespace ArcadeFrontend.ViewModels
 
         private void LaunchAndTrack(Game game, out string? errorMessage)
         {
+            if (!IsGameLaunchable(game, out string issue))
+            {
+                StatusText = $"{game.Title} unavailable";
+                errorMessage = issue;
+                return;
+            }
+
             errorMessage = null;
 
             try
@@ -324,6 +431,68 @@ namespace ArcadeFrontend.ViewModels
                 StatusText = $"Launch failed: {game.Title}";
                 errorMessage = $"Could not launch '{game.Title}'.\n\nError: {ex.Message}";
             }
+        }
+
+        private bool IsGameLaunchable(Game game, out string issue)
+        {
+            issue = string.Empty;
+
+            if (game.LaunchType == LaunchType.Emulator)
+            {
+                EmulatorProfile? emulator = _emulatorProfiles.FirstOrDefault(e => e.Key == game.EmulatorKey);
+
+                if (emulator == null)
+                {
+                    issue = "Missing emulator profile.";
+                    return false;
+                }
+
+                string resolvedExecutablePath = _pathService.Resolve(emulator.ExecutablePath);
+
+                if (!File.Exists(resolvedExecutablePath))
+                {
+                    issue = $"Missing emulator: {resolvedExecutablePath}";
+                    return false;
+                }
+
+                if (string.IsNullOrWhiteSpace(game.RomPath))
+                {
+                    issue = "Missing ROM path.";
+                    return false;
+                }
+
+                string resolvedRomPath = _pathService.Resolve(game.RomPath);
+
+                if (!File.Exists(resolvedRomPath) && !Directory.Exists(resolvedRomPath))
+                {
+                    issue = $"Missing ROM: {resolvedRomPath}";
+                    return false;
+                }
+
+                return true;
+            }
+
+            if (game.LaunchType == LaunchType.Native)
+            {
+                if (string.IsNullOrWhiteSpace(game.LaunchTarget))
+                {
+                    issue = "Missing launch target.";
+                    return false;
+                }
+
+                string resolvedLaunchTarget = _pathService.Resolve(game.LaunchTarget);
+
+                if (!File.Exists(resolvedLaunchTarget))
+                {
+                    issue = $"Missing game executable: {resolvedLaunchTarget}";
+                    return false;
+                }
+
+                return true;
+            }
+
+            issue = "Unsupported launch type.";
+            return false;
         }
 
         private void AddToRecentGames(Game game)
@@ -361,7 +530,6 @@ namespace ArcadeFrontend.ViewModels
             _gameDataService.SaveGames(_games);
 
         }
-
 
         private void EnterAttractMode()
         {
@@ -432,6 +600,7 @@ namespace ArcadeFrontend.ViewModels
                 MenuItems.Add(MenuItemViewModel.FromModel(item));
             }
 
+            UpdateLaunchAvailability();
             EnsureValidSelection();
             RefreshSelectionState();
             UpdateStatusForCurrentScreen();
@@ -484,7 +653,16 @@ namespace ArcadeFrontend.ViewModels
 
             EnsureValidSelection();
 
-            StatusText = $"{TitleText} - Selected: {MenuItems[SelectedIndex].Label}";
+            var selectedItem = MenuItems[SelectedIndex];
+
+            if (!selectedItem.IsLaunchAvailable && !string.IsNullOrWhiteSpace(selectedItem.LaunchIssue))
+            {
+                StatusText = $"{selectedItem.Label} - {selectedItem.LaunchIssue}";
+            }
+            else
+            {
+                StatusText = $"{TitleText} - Selected: {selectedItem.Label}";
+            }
         }
     }
 }
