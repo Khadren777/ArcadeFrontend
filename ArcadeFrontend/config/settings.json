@@ -1,0 +1,7 @@
+{
+  "AttractModeTimeoutSeconds": 15,
+  "MaxRecentGames": 10,
+  "ShowHiddenGamesInAdmin": true,
+  "EnableLaunchLogging": true,
+  "EnableDiagnosticLogging": true
+}

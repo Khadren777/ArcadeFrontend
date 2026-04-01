@@ -1,4 +1,6 @@
-﻿using ArcadeFrontend.Models;
+using System.Windows;
+using System.Windows.Input;
+using ArcadeFrontend.Models;
 using ArcadeFrontend.Services;
 using ArcadeFrontend.Services.Input;
 using ArcadeFrontend.Services.Launching;
@@ -7,16 +9,9 @@ using ArcadeFrontend.Services.Navigation;
 using ArcadeFrontend.Services.Sessions;
 using ArcadeFrontend.Services.State;
 using ArcadeFrontend.ViewModels;
-using System.Windows;
-using System.Windows.Input;
 
 /// <summary>
 /// Main application window.
-///
-/// Responsible only for:
-/// - composing services and view models
-/// - forwarding input into the input pipeline
-/// - handling window lifecycle concerns
 /// </summary>
 namespace ArcadeFrontend;
 
@@ -26,9 +21,6 @@ public partial class MainWindow : Window
     private readonly KeyboardInputMapper _keyboardInputMapper;
     private readonly InputRouterService _inputRouterService;
 
-    /// <summary>
-    /// Initializes the application shell and composes dependencies.
-    /// </summary>
     public MainWindow()
     {
         InitializeComponent();
@@ -46,7 +38,12 @@ public partial class MainWindow : Window
         var favoritesService = new FavoritesService(gameDataService);
         var adminUnlockService = new AdminUnlockService(new[] { Key.Up, Key.Up, Key.Down, Key.Down, Key.Enter });
         var adminStateService = new AdminStateService(adminUnlockService);
-        var attractModeService = new AttractModeService(TimeSpan.FromSeconds(15));
+        var settingsService = new SettingsService(baseDirectory);
+        var loggingService = new LoggingService();
+        var adminDiagnosticsService = new AdminDiagnosticsService(loggingService, settingsService);
+
+        AppSettings settings = settingsService.LoadSettings();
+        var attractModeService = new AttractModeService(TimeSpan.FromSeconds(settings.AttractModeTimeoutSeconds));
         var idleStateService = new IdleStateService(attractModeService);
         var navigationStateService = new NavigationStateService();
         var gameLauncherService = new GameLauncherService(pathService);
@@ -61,26 +58,21 @@ public partial class MainWindow : Window
             adminStateService,
             idleStateService,
             new MenuDefinitionService(),
-            pathService);
+            pathService,
+            settingsService,
+            loggingService,
+            adminDiagnosticsService);
 
         _shellViewModel = new ShellViewModel(mainWindowViewModel);
-
-        // Keep the existing view binding model intact for now.
         DataContext = _shellViewModel.Main;
     }
 
-    /// <summary>
-    /// Handles initial window load and triggers application initialization.
-    /// </summary>
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
         Focus();
         _shellViewModel.Main.Initialize();
     }
 
-    /// <summary>
-    /// Routes keyboard input through the action-based input pipeline.
-    /// </summary>
     private void Window_KeyDown(object sender, KeyEventArgs e)
     {
         AppAction action = _keyboardInputMapper.Map(e.Key);

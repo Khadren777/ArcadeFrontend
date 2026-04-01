@@ -1,4 +1,5 @@
-﻿using ArcadeFrontend.Models;
+using System.Linq;
+using ArcadeFrontend.Models;
 using ArcadeFrontend.Services.Library;
 using ArcadeFrontend.Services.Sessions;
 
@@ -13,9 +14,6 @@ public sealed class LaunchFlowService
     private readonly LibraryService _libraryService;
     private readonly RecentSessionService _recentSessionService;
 
-    /// <summary>
-    /// Initializes the launch flow service.
-    /// </summary>
     public LaunchFlowService(
         GameLauncherService gameLauncherService,
         LibraryService libraryService,
@@ -26,9 +24,6 @@ public sealed class LaunchFlowService
         _recentSessionService = recentSessionService;
     }
 
-    /// <summary>
-    /// Attempts to launch a game and records a successful launch.
-    /// </summary>
     public LaunchResult Launch(Game game)
     {
         try

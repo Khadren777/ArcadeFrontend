@@ -1,23 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
 using System.Windows.Input;
 using ArcadeFrontend.Models;
 
 /// <summary>
 /// Maps raw keyboard input to high-level application actions.
-///
-/// This keeps the rest of the application independent from specific keys
-/// and makes future encoder / cabinet input support much easier to add.
 /// </summary>
 namespace ArcadeFrontend.Services.Input;
 
 public sealed class KeyboardInputMapper
 {
-    /// <summary>
-    /// Converts a keyboard key into an application action.
-    /// </summary>
     public AppAction Map(Key key)
     {
         return key switch

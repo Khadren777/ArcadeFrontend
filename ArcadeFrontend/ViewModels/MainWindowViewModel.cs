@@ -1,13 +1,14 @@
-﻿using ArcadeFrontend.Models;
+using System.Collections.ObjectModel;
+using System.IO;
+using System.Linq;
+using System.Windows.Input;
+using ArcadeFrontend.Models;
 using ArcadeFrontend.Services;
 using ArcadeFrontend.Services.Launching;
 using ArcadeFrontend.Services.Library;
 using ArcadeFrontend.Services.Navigation;
 using ArcadeFrontend.Services.Sessions;
 using ArcadeFrontend.Services.State;
-using System.Collections.ObjectModel;
-using System.IO;
-using System.Windows.Input;
 
 /// <summary>
 /// Main application view model for the transitional shell architecture.
@@ -25,13 +26,18 @@ public class MainWindowViewModel : ViewModelBase
     private readonly IdleStateService _idleStateService;
     private readonly MenuDefinitionService _menuDefinitionService;
     private readonly PathService _pathService;
+    private readonly SettingsService _settingsService;
+    private readonly LoggingService _loggingService;
+    private readonly AdminDiagnosticsService _adminDiagnosticsService;
 
     private bool _shouldExit;
     private int _selectedIndex;
     private string _titleText = "ARCADE FRONTEND";
     private string _statusText = "Ready";
+    private AppSettings _settings = new();
 
     public ObservableCollection<MenuItemViewModel> MenuItems { get; } = new();
+    public ObservableCollection<string> DiagnosticLines { get; } = new();
 
     public string TitleText
     {
@@ -79,15 +85,18 @@ public class MainWindowViewModel : ViewModelBase
     }
 
     public MainWindowViewModel(
-    LibraryService libraryService,
-    LaunchFlowService launchFlowService,
-    NavigationStateService navigationStateService,
-    RecentSessionService recentSessionService,
-    FavoritesService favoritesService,
-    AdminStateService adminStateService,
-    IdleStateService idleStateService,
-    MenuDefinitionService menuDefinitionService,
-    PathService pathService)
+        LibraryService libraryService,
+        LaunchFlowService launchFlowService,
+        NavigationStateService navigationStateService,
+        RecentSessionService recentSessionService,
+        FavoritesService favoritesService,
+        AdminStateService adminStateService,
+        IdleStateService idleStateService,
+        MenuDefinitionService menuDefinitionService,
+        PathService pathService,
+        SettingsService settingsService,
+        LoggingService loggingService,
+        AdminDiagnosticsService adminDiagnosticsService)
     {
         _libraryService = libraryService;
         _launchFlowService = launchFlowService;
@@ -98,9 +107,13 @@ public class MainWindowViewModel : ViewModelBase
         _idleStateService = idleStateService;
         _menuDefinitionService = menuDefinitionService;
         _pathService = pathService;
+        _settingsService = settingsService;
+        _loggingService = loggingService;
+        _adminDiagnosticsService = adminDiagnosticsService;
 
         _idleStateService.AttractModeRequested += (_, _) =>
         {
+            _loggingService.Info("Idle", "Attract mode requested");
             _navigationStateService.EnterAttractMode();
             SelectedIndex = 0;
             RenderCurrentScreen();
@@ -110,17 +123,22 @@ public class MainWindowViewModel : ViewModelBase
 
     public void Initialize()
     {
+        _settings = _settingsService.LoadSettings();
         _libraryService.Load();
         _recentSessionService.Load();
         ValidateEnvironment();
         _idleStateService.Start();
+        _loggingService.Info("App", "Frontend initialized");
         RenderCurrentScreen();
+        RefreshDiagnostics();
     }
 
     public void NotifyUserInteraction()
     {
-        if (_idleStateService.NotifyUserInteraction())
+        bool exitedAttractMode = _idleStateService.NotifyUserInteraction();
+        if (exitedAttractMode)
         {
+            _loggingService.Info("Idle", "Exited attract mode from user interaction");
             _navigationStateService.ExitAttractMode();
             SelectedIndex = 0;
             RenderCurrentScreen();
@@ -184,13 +202,14 @@ public class MainWindowViewModel : ViewModelBase
     public bool RegisterAdminPulse(Key key)
     {
         if (_idleStateService.IsInAttractMode) { TryExitAttractMode(); return true; }
-
         _idleStateService.NotifyUserInteraction();
 
         if (_adminStateService.RegisterKey(key))
         {
+            _loggingService.Info("Admin", "Admin unlocked");
             NavigateTo(ScreenType.AdminMenu);
             StatusText = "Admin unlocked";
+            RefreshDiagnostics();
             return true;
         }
 
@@ -201,13 +220,16 @@ public class MainWindowViewModel : ViewModelBase
     {
         if (_idleStateService.IsInAttractMode) { TryExitAttractMode(); return; }
         _idleStateService.NotifyUserInteraction();
+        _loggingService.Info("Admin", "Service mode opened");
         NavigateTo(ScreenType.AdminMenu);
+        RefreshDiagnostics();
     }
 
     public void TryExitAttractMode()
     {
         if (_idleStateService.ExitAttractMode())
         {
+            _loggingService.Info("Idle", "Attract mode exited");
             _navigationStateService.ExitAttractMode();
             SelectedIndex = 0;
             RenderCurrentScreen();
@@ -238,14 +260,121 @@ public class MainWindowViewModel : ViewModelBase
         }
     }
 
-    public void ClearExitRequest() => ShouldExit = false;
+    public void ClearExitRequest()
+    {
+        ShouldExit = false;
+    }
+
+    private void EnsureValidSelection()
+    {
+        if (MenuItems.Count == 0) { SelectedIndex = 0; return; }
+        if (SelectedIndex < 0 || SelectedIndex >= MenuItems.Count) SelectedIndex = 0;
+    }
+
+    private void ValidateEnvironment()
+    {
+        List<string> issues = new();
+
+        foreach (EmulatorProfile emulator in _libraryService.EmulatorProfiles)
+        {
+            string resolvedPath = _pathService.Resolve(emulator.ExecutablePath);
+            if (!File.Exists(resolvedPath))
+            {
+                issues.Add($"Missing emulator: {emulator.DisplayName}");
+            }
+        }
+
+        if (issues.Count > 0)
+        {
+            foreach (string issue in issues)
+            {
+                _loggingService.Warning("Environment", issue);
+            }
+        }
+
+        StatusText = issues.Count > 0
+            ? $"Missing dependencies: {string.Join(", ", issues)}"
+            : "Ready";
+    }
+
+    private void RefreshDiagnostics()
+    {
+        DiagnosticLines.Clear();
+        DiagnosticLines.Add(_adminDiagnosticsService.BuildSummary());
+
+        foreach (AppLogEntry entry in _adminDiagnosticsService.GetRecentLogs().TakeLast(12))
+        {
+            DiagnosticLines.Add($"[{entry.Level}] {entry.TimestampUtc:HH:mm:ss} {entry.Category} - {entry.Message}");
+        }
+    }
+
+    private void UpdateLaunchAvailability()
+    {
+        foreach (MenuItemViewModel item in MenuItems)
+        {
+            item.IsLaunchAvailable = true;
+            item.LaunchIssue = string.Empty;
+
+            if (item.Game == null) continue;
+            Game game = item.Game;
+
+            if (game.LaunchType == LaunchType.Emulator)
+            {
+                EmulatorProfile? emulator = _libraryService.EmulatorProfiles.FirstOrDefault(e => e.Key == game.EmulatorKey);
+
+                if (emulator == null)
+                {
+                    item.IsLaunchAvailable = false;
+                    item.LaunchIssue = "Missing emulator profile";
+                    continue;
+                }
+
+                string resolvedExecutablePath = _pathService.Resolve(emulator.ExecutablePath);
+                if (!File.Exists(resolvedExecutablePath))
+                {
+                    item.IsLaunchAvailable = false;
+                    item.LaunchIssue = "Missing emulator";
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(game.RomPath))
+                {
+                    item.IsLaunchAvailable = false;
+                    item.LaunchIssue = "Missing ROM path";
+                    continue;
+                }
+
+                string resolvedRomPath = _pathService.Resolve(game.RomPath);
+                if (!File.Exists(resolvedRomPath) && !Directory.Exists(resolvedRomPath))
+                {
+                    item.IsLaunchAvailable = false;
+                    item.LaunchIssue = "Missing ROM";
+                }
+            }
+            else if (game.LaunchType == LaunchType.Native)
+            {
+                if (string.IsNullOrWhiteSpace(game.LaunchTarget))
+                {
+                    item.IsLaunchAvailable = false;
+                    item.LaunchIssue = "Missing launch target";
+                    continue;
+                }
+
+                string resolvedLaunchTarget = _pathService.Resolve(game.LaunchTarget);
+                if (!File.Exists(resolvedLaunchTarget))
+                {
+                    item.IsLaunchAvailable = false;
+                    item.LaunchIssue = "Missing game executable";
+                }
+            }
+        }
+    }
 
     private void MoveSelection(int direction)
     {
         if (MenuItems.Count == 0) return;
 
         SelectedIndex += direction;
-
         if (SelectedIndex < 0) SelectedIndex = MenuItems.Count - 1;
         else if (SelectedIndex >= MenuItems.Count) SelectedIndex = 0;
 
@@ -256,46 +385,111 @@ public class MainWindowViewModel : ViewModelBase
     private void ActivateSelectedItem(out string? errorMessage)
     {
         errorMessage = null;
-        if (MenuItems.Count == 0) return;
+        if (MenuItems.Count == 0 || SelectedIndex < 0 || SelectedIndex >= MenuItems.Count) return;
 
-        var item = MenuItems[SelectedIndex];
+        MenuItemViewModel item = MenuItems[SelectedIndex];
 
         switch (item.Action)
         {
+            case MenuAction.None:
+                break;
+            case MenuAction.Play:
+                StatusText = "Play selected";
+                break;
             case MenuAction.OpenSystems:
                 NavigateTo(ScreenType.SystemsMenu);
                 break;
-
+            case MenuAction.OpenFavorites:
+                NavigateTo(ScreenType.FavoritesMenu);
+                break;
+            case MenuAction.OpenRecentGames:
+                NavigateTo(ScreenType.RecentGamesMenu);
+                break;
+            case MenuAction.OpenHiddenGames:
+                if (_adminStateService.IsUnlocked && _settings.ShowHiddenGamesInAdmin) NavigateTo(ScreenType.HiddenGamesMenu);
+                else StatusText = "Hidden Games locked";
+                break;
+            case MenuAction.OpenSettings:
+            case MenuAction.OpenAdminMenu:
+                if (_adminStateService.IsUnlocked)
+                {
+                    NavigateTo(ScreenType.AdminMenu);
+                    RefreshDiagnostics();
+                }
+                else StatusText = "Admin locked";
+                break;
             case MenuAction.OpenSystemGames:
                 _navigationStateService.OpenSystem(item.Value);
                 SelectedIndex = 0;
                 RenderCurrentScreen();
                 RefreshSelectionState();
                 break;
-
             case MenuAction.LaunchGame:
-            case MenuAction.LaunchRecentGame:
             case MenuAction.LaunchHiddenGame:
+            case MenuAction.LaunchRecentGame:
                 if (item.Game != null)
                 {
-                    var result = _launchFlowService.Launch(item.Game);
+                    LaunchResult result = _launchFlowService.Launch(item.Game);
                     StatusText = result.Message;
+
+                    if (_settings.EnableLaunchLogging)
+                    {
+                        if (result.Success) _loggingService.Info("Launch", result.Message);
+                        else _loggingService.Error("Launch", result.Message);
+                    }
+
                     if (!result.Success) errorMessage = result.Message;
+                    RefreshDiagnostics();
                 }
                 break;
-
+            case MenuAction.ToggleFavorite:
+                ToggleFavorite();
+                break;
             case MenuAction.ExitApp:
                 ShouldExit = true;
+                _loggingService.Info("App", "Exit requested");
+                RefreshDiagnostics();
+                break;
+            case MenuAction.RescanLibrary:
+                _libraryService.Reload();
+                StatusText = "Library rescanned";
+                _loggingService.Info("Library", "Library rescanned");
+                RenderCurrentScreen();
+                RefreshDiagnostics();
+                break;
+            case MenuAction.InputTest:
+                StatusText = "Input Test selected";
+                _loggingService.Info("Admin", "Input test selected");
+                RefreshDiagnostics();
+                break;
+            case MenuAction.BackToMain:
+                NavigateTo(ScreenType.MainMenu);
+                break;
+            case MenuAction.BackToSystems:
+                NavigateTo(ScreenType.SystemsMenu);
+                break;
+            case MenuAction.BackToAdmin:
+                NavigateTo(ScreenType.AdminMenu);
                 break;
         }
     }
 
     private void ToggleFavorite()
     {
-        var game = GetSelectedGame();
-        if (game == null) return;
+        Game? selectedGame = GetSelectedGame();
+        if (selectedGame is null)
+        {
+            StatusText = "No game selected";
+            return;
+        }
 
-        _favoritesService.ToggleFavorite(game, _libraryService.Games);
+        _favoritesService.ToggleFavorite(selectedGame, _libraryService.Games);
+        StatusText = selectedGame.IsFavorite
+            ? $"Added to favorites: {selectedGame.Title}"
+            : $"Removed from favorites: {selectedGame.Title}";
+
+        _loggingService.Info("Favorites", StatusText);
+        RefreshDiagnostics();
         RenderCurrentScreen();
     }
 
@@ -303,14 +497,6 @@ public class MainWindowViewModel : ViewModelBase
     {
         if (SelectedIndex < 0 || SelectedIndex >= MenuItems.Count) return null;
         return MenuItems[SelectedIndex].Game;
-    }
-
-    private void NavigateTo(ScreenType screen)
-    {
-        _navigationStateService.NavigateTo(screen);
-        SelectedIndex = 0;
-        RenderCurrentScreen();
-        RefreshSelectionState();
     }
 
     private void HandleBackOrExit()
@@ -324,17 +510,29 @@ public class MainWindowViewModel : ViewModelBase
         NavigateTo(_navigationStateService.ResolveBackTarget());
     }
 
+    private void NavigateTo(ScreenType targetScreen)
+    {
+        _navigationStateService.NavigateTo(targetScreen);
+        SelectedIndex = 0;
+        RenderCurrentScreen();
+        RefreshSelectionState();
+    }
+
     private void RenderCurrentScreen()
     {
-        var screen = BuildScreenForCurrentState();
-
+        MenuScreen screen = BuildScreenForCurrentState();
         TitleText = screen.Title;
         MenuItems.Clear();
 
-        foreach (var item in screen.Items)
+        foreach (MenuItemModel item in screen.Items)
+        {
             MenuItems.Add(MenuItemViewModel.FromModel(item));
+        }
 
+        EnsureValidSelection();
         RefreshSelectionState();
+        UpdateLaunchAvailability();
+        UpdateStatusForCurrentScreen();
     }
 
     private MenuScreen BuildScreenForCurrentState()
@@ -344,25 +542,41 @@ public class MainWindowViewModel : ViewModelBase
             ScreenType.MainMenu => _menuDefinitionService.BuildMainMenu(),
             ScreenType.SystemsMenu => _menuDefinitionService.BuildSystemsMenu(),
             ScreenType.GamesMenu => _menuDefinitionService.BuildGamesMenu(_navigationStateService.SelectedSystem, _libraryService.Games.ToList()),
+            ScreenType.HiddenGamesMenu => _menuDefinitionService.BuildHiddenGamesMenu(_libraryService.Games.ToList()),
+            ScreenType.AdminMenu => _menuDefinitionService.BuildAdminMenu(),
             ScreenType.RecentGamesMenu => _menuDefinitionService.BuildRecentGamesMenu(_recentSessionService.RecentGames.ToList()),
+            ScreenType.FavoritesMenu => _menuDefinitionService.BuildFavoritesMenu(_libraryService.Games.ToList()),
+            ScreenType.AttractMode => _menuDefinitionService.BuildAttractModeScreen(_recentSessionService.RecentGames.ToList()),
             _ => new MenuScreen()
         };
     }
 
     private void RefreshSelectionState()
     {
+        if (MenuItems.Count == 0) return;
+        EnsureValidSelection();
+
         for (int i = 0; i < MenuItems.Count; i++)
+        {
             MenuItems[i].IsSelected = i == SelectedIndex;
+        }
     }
 
     private void UpdateStatusForCurrentScreen()
     {
-        if (MenuItems.Count == 0) return;
-        StatusText = $"{TitleText} - {MenuItems[SelectedIndex].Label}";
-    }
+        if (_navigationStateService.CurrentScreen == ScreenType.AttractMode)
+        {
+            StatusText = "Press any key to return";
+            return;
+        }
 
-    private void ValidateEnvironment()
-    {
-        StatusText = "Ready";
+        if (MenuItems.Count == 0)
+        {
+            StatusText = "No items available";
+            return;
+        }
+
+        EnsureValidSelection();
+        StatusText = $"{TitleText} - Selected: {MenuItems[SelectedIndex].Label}";
     }
 }

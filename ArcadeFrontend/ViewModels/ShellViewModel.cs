@@ -1,4 +1,4 @@
-﻿using System.Windows.Input;
+using System.Windows.Input;
 
 /// <summary>
 /// Transitional root view model for the application.
@@ -7,9 +7,6 @@ namespace ArcadeFrontend.ViewModels;
 
 public sealed class ShellViewModel : ViewModelBase
 {
-    /// <summary>
-    /// Initializes the shell with the existing main view model.
-    /// </summary>
     public ShellViewModel(MainWindowViewModel main)
     {
         Main = main;

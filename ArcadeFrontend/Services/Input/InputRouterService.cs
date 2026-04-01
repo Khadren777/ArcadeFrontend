@@ -1,20 +1,14 @@
-﻿using System.Windows.Input;
+using System.Windows.Input;
 using ArcadeFrontend.Models;
 using ArcadeFrontend.ViewModels;
 
 /// <summary>
 /// Routes application actions into the current shell / view model layer.
-///
-/// This keeps the window free of behavior-specific branching and creates
-/// the bridge between input mapping and application orchestration.
 /// </summary>
 namespace ArcadeFrontend.Services.Input;
 
 public sealed class InputRouterService
 {
-    /// <summary>
-    /// Routes an application action into the active shell.
-    /// </summary>
     public bool Route(AppAction action, ShellViewModel shellViewModel, out string? errorMessage)
     {
         errorMessage = null;

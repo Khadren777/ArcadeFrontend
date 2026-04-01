@@ -1,11 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
 /// <summary>
 /// Represents the outcome of a game launch attempt.
-/// 
-/// Provides structured success/failure reporting instead of relying on exceptions.
 /// </summary>
 namespace ArcadeFrontend.Models;
 
@@ -16,9 +10,6 @@ public sealed class LaunchResult
     public string? ExecutablePath { get; init; }
     public string? Arguments { get; init; }
 
-    /// <summary>
-    /// Creates a successful launch result.
-    /// </summary>
     public static LaunchResult Succeeded(string message, string? executablePath = null, string? arguments = null)
     {
         return new LaunchResult
@@ -30,9 +21,6 @@ public sealed class LaunchResult
         };
     }
 
-    /// <summary>
-    /// Creates a failed launch result.
-    /// </summary>
     public static LaunchResult Failed(string message, string? executablePath = null, string? arguments = null)
     {
         return new LaunchResult
