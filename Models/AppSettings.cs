@@ -22,6 +22,12 @@ public sealed class AppSettings
     public int InputRepeatIntervalMs { get; set; } = 75;
     public bool PersistMenuSelectionMemory { get; set; } = true;
 
+    public bool EnableMenuSounds { get; set; } = true;
+    public bool EnableAmbientMusic { get; set; } = false;
+    public double MasterVolume { get; set; } = 0.85;
+    public double MenuSoundVolume { get; set; } = 0.9;
+    public double AmbientMusicVolume { get; set; } = 0.35;
+
     public string BackgroundImageFolder { get; set; } = @"Assets\Backgrounds";
     public string MainMenuBackgroundPath { get; set; } = @"Assets\Backgrounds\main.jpg";
     public string SystemsBackgroundPath { get; set; } = @"Assets\Backgrounds\systems.jpg";
@@ -31,4 +37,10 @@ public sealed class AppSettings
     public string HiddenGamesBackgroundPath { get; set; } = @"Assets\Backgrounds\hidden.jpg";
     public string AttractModeBackgroundPath { get; set; } = @"Assets\Backgrounds\attract.jpg";
     public string AttractVideoPath { get; set; } = @"Assets\Video\attract.mp4";
+
+    public string MenuMoveSoundPath { get; set; } = @"Assets\Audio\menu-move.wav";
+    public string MenuSelectSoundPath { get; set; } = @"Assets\Audio\menu-select.wav";
+    public string MenuBackSoundPath { get; set; } = @"Assets\Audio\menu-back.wav";
+    public string LaunchSoundPath { get; set; } = @"Assets\Audio\launch.wav";
+    public string AmbientMusicPath { get; set; } = @"Assets\Audio\ambient.mp3";
 }

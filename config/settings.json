@@ -11,6 +11,11 @@
   "InputRepeatInitialDelayMs": 150,
   "InputRepeatIntervalMs": 75,
   "PersistMenuSelectionMemory": true,
+  "EnableMenuSounds": true,
+  "EnableAmbientMusic": false,
+  "MasterVolume": 0.85,
+  "MenuSoundVolume": 0.9,
+  "AmbientMusicVolume": 0.35,
   "BackgroundImageFolder": "Assets\\\\Backgrounds",
   "MainMenuBackgroundPath": "Assets\\\\Backgrounds\\\\main.jpg",
   "SystemsBackgroundPath": "Assets\\\\Backgrounds\\\\systems.jpg",
@@ -19,5 +24,10 @@
   "RecentBackgroundPath": "Assets\\\\Backgrounds\\\\recent.jpg",
   "HiddenGamesBackgroundPath": "Assets\\\\Backgrounds\\\\hidden.jpg",
   "AttractModeBackgroundPath": "Assets\\\\Backgrounds\\\\attract.jpg",
-  "AttractVideoPath": "Assets\\\\Video\\\\attract.mp4"
+  "AttractVideoPath": "Assets\\\\Video\\\\attract.mp4",
+  "MenuMoveSoundPath": "Assets\\\\Audio\\\\menu-move.wav",
+  "MenuSelectSoundPath": "Assets\\\\Audio\\\\menu-select.wav",
+  "MenuBackSoundPath": "Assets\\\\Audio\\\\menu-back.wav",
+  "LaunchSoundPath": "Assets\\\\Audio\\\\launch.wav",
+  "AmbientMusicPath": "Assets\\\\Audio\\\\ambient.mp3"
 }

@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
 using ArcadeFrontend.Models;
 using ArcadeFrontend.Services;
 using ArcadeFrontend.Services.Input;
@@ -21,6 +22,9 @@ public partial class MainWindow : Window
     private readonly InputRouterService _inputRouterService;
     private readonly InputRepeatService _inputRepeatService;
     private readonly SettingsService _settingsService;
+    private readonly SoundStateService _soundStateService;
+    private readonly AudioCueService _audioCueService;
+    private readonly MediaPlayer _ambientMusicPlayer = new();
 
     public MainWindow()
     {
@@ -45,6 +49,8 @@ public partial class MainWindow : Window
         var adminDiagnosticsService = new AdminDiagnosticsService(loggingService, _settingsService);
         var visualStateService = new VisualStateService(pathService);
         var uiStateStoreService = new UiStateStoreService(baseDirectory);
+        _soundStateService = new SoundStateService(pathService);
+        _audioCueService = new AudioCueService();
 
         AppSettings settings = _settingsService.LoadSettings();
         _inputRepeatService.Configure(settings.InputRepeatInitialDelayMs, settings.InputRepeatIntervalMs);
@@ -73,11 +79,15 @@ public partial class MainWindow : Window
             loggingService,
             adminDiagnosticsService,
             visualStateService,
-            uiStateStoreService);
+            uiStateStoreService,
+            _soundStateService,
+            _audioCueService);
 
         _shellViewModel = new ShellViewModel(mainWindowViewModel);
         DataContext = _shellViewModel.Main;
         _shellViewModel.Main.PropertyChanged += MainViewModel_PropertyChanged;
+
+        _ambientMusicPlayer.MediaEnded += AmbientMusicPlayer_MediaEnded;
     }
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
@@ -85,6 +95,8 @@ public partial class MainWindow : Window
         Focus();
         _shellViewModel.Main.Initialize();
         RefreshMediaPlayback();
+        RefreshAmbientMusic();
+        TryPlayPendingSound();
     }
 
     private void Window_KeyDown(object sender, KeyEventArgs e)
@@ -103,6 +115,7 @@ public partial class MainWindow : Window
     {
         _inputRepeatService.Stop();
         StopAttractVideo();
+        StopAmbientMusic();
     }
 
     private void AttractVideoPlayer_MediaEnded(object sender, RoutedEventArgs e)
@@ -120,12 +133,34 @@ public partial class MainWindow : Window
         StopAttractVideo();
     }
 
+    private void AmbientMusicPlayer_MediaEnded(object? sender, EventArgs e)
+    {
+        try
+        {
+            _ambientMusicPlayer.Position = TimeSpan.Zero;
+            _ambientMusicPlayer.Play();
+        }
+        catch
+        {
+        }
+    }
+
     private void MainViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(MainWindowViewModel.ShowAttractVideo) ||
             e.PropertyName == nameof(MainWindowViewModel.AttractVideoPath))
         {
             RefreshMediaPlayback();
+        }
+
+        if (e.PropertyName == nameof(MainWindowViewModel.PendingSoundEffect))
+        {
+            TryPlayPendingSound();
+        }
+
+        if (e.PropertyName == nameof(MainWindowViewModel.SoundState))
+        {
+            RefreshAmbientMusic();
         }
     }
 
@@ -154,6 +189,8 @@ public partial class MainWindow : Window
         if (handled)
         {
             RefreshMediaPlayback();
+            RefreshAmbientMusic();
+            TryPlayPendingSound();
         }
     }
 
@@ -164,7 +201,8 @@ public partial class MainWindow : Window
 
     private void RefreshMediaPlayback()
     {
-        if (_shellViewModel.Main.ShowAttractVideo && !string.IsNullOrWhiteSpace(_shellViewModel.Main.AttractVideoPath))
+        if (_shellViewModel.Main.ShowAttractVideo &&
+            !string.IsNullOrWhiteSpace(_shellViewModel.Main.AttractVideoPath))
         {
             try
             {
@@ -183,12 +221,91 @@ public partial class MainWindow : Window
         }
     }
 
+    private void RefreshAmbientMusic()
+    {
+        SoundStateSnapshot state = _shellViewModel.Main.SoundState;
+
+        if (!state.EnableAmbientMusic || string.IsNullOrWhiteSpace(state.AmbientMusicPath))
+        {
+            StopAmbientMusic();
+            return;
+        }
+
+        try
+        {
+            Uri source = new Uri(state.AmbientMusicPath, UriKind.Absolute);
+            if (_ambientMusicPlayer.Source == null || _ambientMusicPlayer.Source != source)
+            {
+                _ambientMusicPlayer.Open(source);
+            }
+
+            _ambientMusicPlayer.Volume = state.MasterVolume * state.AmbientMusicVolume;
+            _ambientMusicPlayer.Play();
+        }
+        catch
+        {
+            StopAmbientMusic();
+        }
+    }
+
+    private void TryPlayPendingSound()
+    {
+        SoundEffectType effect = _shellViewModel.Main.ConsumePendingSoundEffect();
+        if (effect == SoundEffectType.None)
+        {
+            return;
+        }
+
+        SoundStateSnapshot state = _shellViewModel.Main.SoundState;
+        if (!state.EnableMenuSounds)
+        {
+            return;
+        }
+
+        string path = effect switch
+        {
+            SoundEffectType.MenuMove => state.MenuMoveSoundPath,
+            SoundEffectType.MenuSelect => state.MenuSelectSoundPath,
+            SoundEffectType.MenuBack => state.MenuBackSoundPath,
+            SoundEffectType.Launch => state.LaunchSoundPath,
+            _ => string.Empty
+        };
+
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return;
+        }
+
+        try
+        {
+            MediaPlayer player = new MediaPlayer();
+            player.Open(new Uri(path, UriKind.Absolute));
+            player.Volume = state.MasterVolume * state.MenuSoundVolume;
+            player.Play();
+        }
+        catch
+        {
+        }
+    }
+
     private void StopAttractVideo()
     {
         try
         {
             AttractVideoPlayer.Stop();
             AttractVideoPlayer.Source = null;
+        }
+        catch
+        {
+        }
+    }
+
+    private void StopAmbientMusic()
+    {
+        try
+        {
+            _ambientMusicPlayer.Stop();
+            _ambientMusicPlayer.Close();
         }
         catch
         {
