@@ -12,9 +12,6 @@ using ArcadeFrontend.Services.Sessions;
 using ArcadeFrontend.Services.State;
 using ArcadeFrontend.ViewModels;
 
-/// <summary>
-/// Main application window.
-/// </summary>
 namespace ArcadeFrontend;
 
 public partial class MainWindow : Window
@@ -22,6 +19,7 @@ public partial class MainWindow : Window
     private readonly ShellViewModel _shellViewModel;
     private readonly KeyboardInputMapper _keyboardInputMapper;
     private readonly InputRouterService _inputRouterService;
+    private readonly InputRepeatService _inputRepeatService;
     private readonly SettingsService _settingsService;
 
     public MainWindow()
@@ -30,6 +28,7 @@ public partial class MainWindow : Window
 
         _keyboardInputMapper = new KeyboardInputMapper();
         _inputRouterService = new InputRouterService();
+        _inputRepeatService = new InputRepeatService(IsRepeatableKey);
 
         string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
 
@@ -45,8 +44,11 @@ public partial class MainWindow : Window
         var loggingService = new LoggingService();
         var adminDiagnosticsService = new AdminDiagnosticsService(loggingService, _settingsService);
         var visualStateService = new VisualStateService(pathService);
+        var uiStateStoreService = new UiStateStoreService(baseDirectory);
 
         AppSettings settings = _settingsService.LoadSettings();
+        _inputRepeatService.Configure(settings.InputRepeatInitialDelayMs, settings.InputRepeatIntervalMs);
+
         var attractModeService = new AttractModeService(TimeSpan.FromSeconds(settings.AttractModeTimeoutSeconds));
         var idleStateService = new IdleStateService(attractModeService);
         var navigationStateService = new NavigationStateService();
@@ -70,11 +72,11 @@ public partial class MainWindow : Window
             _settingsService,
             loggingService,
             adminDiagnosticsService,
-            visualStateService);
+            visualStateService,
+            uiStateStoreService);
 
         _shellViewModel = new ShellViewModel(mainWindowViewModel);
         DataContext = _shellViewModel.Main;
-
         _shellViewModel.Main.PropertyChanged += MainViewModel_PropertyChanged;
     }
 
@@ -87,46 +89,25 @@ public partial class MainWindow : Window
 
     private void Window_KeyDown(object sender, KeyEventArgs e)
     {
-        AppAction action = _keyboardInputMapper.Map(e.Key);
-        bool handled = _inputRouterService.Route(action, _shellViewModel, out string? errorMessage);
+        ProcessKey(e.Key);
+        _inputRepeatService.HandleKeyDown(e.Key, key => Dispatcher.Invoke(() => ProcessKey(key)));
+        e.Handled = true;
+    }
 
-        if (!handled)
-        {
-            handled = _shellViewModel.Main.HandleKey(e.Key, out errorMessage);
-        }
-
-        if (!string.IsNullOrWhiteSpace(errorMessage))
-        {
-            MessageBox.Show(
-                errorMessage,
-                "Launch Error",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
-        }
-
-        if (_shellViewModel.Main.ShouldExit)
-        {
-            _shellViewModel.Main.ClearExitRequest();
-            Close();
-            return;
-        }
-
-        if (handled)
-        {
-            e.Handled = true;
-            RefreshMediaPlayback();
-        }
+    private void Window_KeyUp(object sender, KeyEventArgs e)
+    {
+        _inputRepeatService.HandleKeyUp(e.Key);
     }
 
     private void Window_Closing(object sender, CancelEventArgs e)
     {
+        _inputRepeatService.Stop();
         StopAttractVideo();
     }
 
     private void AttractVideoPlayer_MediaEnded(object sender, RoutedEventArgs e)
     {
         AppSettings settings = _settingsService.LoadSettings();
-
         if (settings.LoopAttractVideo)
         {
             AttractVideoPlayer.Position = TimeSpan.Zero;
@@ -148,10 +129,42 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ProcessKey(Key key)
+    {
+        AppAction action = _keyboardInputMapper.Map(key);
+        bool handled = _inputRouterService.Route(action, _shellViewModel, out string? errorMessage);
+
+        if (!handled)
+        {
+            handled = _shellViewModel.Main.HandleKey(key, out errorMessage);
+        }
+
+        if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            MessageBox.Show(errorMessage, "Launch Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+
+        if (_shellViewModel.Main.ShouldExit)
+        {
+            _shellViewModel.Main.ClearExitRequest();
+            Close();
+            return;
+        }
+
+        if (handled)
+        {
+            RefreshMediaPlayback();
+        }
+    }
+
+    private static bool IsRepeatableKey(Key key)
+    {
+        return key == Key.Up || key == Key.Down || key == Key.Left || key == Key.Right;
+    }
+
     private void RefreshMediaPlayback()
     {
-        if (_shellViewModel.Main.ShowAttractVideo &&
-            !string.IsNullOrWhiteSpace(_shellViewModel.Main.AttractVideoPath))
+        if (_shellViewModel.Main.ShowAttractVideo && !string.IsNullOrWhiteSpace(_shellViewModel.Main.AttractVideoPath))
         {
             try
             {

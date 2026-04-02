@@ -18,6 +18,10 @@ public sealed class AppSettings
     public bool LoopAttractVideo { get; set; } = true;
     public bool DimBackgroundUnderVideo { get; set; } = true;
 
+    public int InputRepeatInitialDelayMs { get; set; } = 150;
+    public int InputRepeatIntervalMs { get; set; } = 75;
+    public bool PersistMenuSelectionMemory { get; set; } = true;
+
     public string BackgroundImageFolder { get; set; } = @"Assets\Backgrounds";
     public string MainMenuBackgroundPath { get; set; } = @"Assets\Backgrounds\main.jpg";
     public string SystemsBackgroundPath { get; set; } = @"Assets\Backgrounds\systems.jpg";

@@ -31,6 +31,7 @@ public class MainWindowViewModel : ViewModelBase
     private readonly LoggingService _loggingService;
     private readonly AdminDiagnosticsService _adminDiagnosticsService;
     private readonly VisualStateService _visualStateService;
+    private readonly UiStateStoreService _uiStateStoreService;
 
     private bool _shouldExit;
     private int _selectedIndex;
@@ -43,6 +44,7 @@ public class MainWindowViewModel : ViewModelBase
     private bool _showDiagnosticsPanel;
     private bool _dimBackgroundUnderVideo = true;
     private AppSettings _settings = new();
+    private UiStateSnapshot _uiState = new();
 
     public ObservableCollection<MenuItemViewModel> MenuItems { get; } = new();
     public ObservableCollection<string> DiagnosticLines { get; } = new();
@@ -126,7 +128,8 @@ public class MainWindowViewModel : ViewModelBase
         SettingsService settingsService,
         LoggingService loggingService,
         AdminDiagnosticsService adminDiagnosticsService,
-        VisualStateService visualStateService)
+        VisualStateService visualStateService,
+        UiStateStoreService uiStateStoreService)
     {
         _libraryService = libraryService;
         _launchFlowService = launchFlowService;
@@ -141,12 +144,14 @@ public class MainWindowViewModel : ViewModelBase
         _loggingService = loggingService;
         _adminDiagnosticsService = adminDiagnosticsService;
         _visualStateService = visualStateService;
+        _uiStateStoreService = uiStateStoreService;
 
         _idleStateService.AttractModeRequested += (_, _) =>
         {
             _loggingService.Info("Idle", "Attract mode requested");
+            SaveCurrentSelection();
             _navigationStateService.EnterAttractMode();
-            SelectedIndex = 0;
+            RestoreSelectionForCurrentScreen();
             RenderCurrentScreen();
             RefreshSelectionState();
         };
@@ -155,6 +160,7 @@ public class MainWindowViewModel : ViewModelBase
     public void Initialize()
     {
         ReloadSettings();
+        _uiState = _uiStateStoreService.Load();
         _libraryService.Load();
         _recentSessionService.Load();
         ValidateEnvironment();
@@ -179,7 +185,7 @@ public class MainWindowViewModel : ViewModelBase
         {
             _loggingService.Info("Idle", "Exited attract mode from user interaction");
             _navigationStateService.ExitAttractMode();
-            SelectedIndex = 0;
+            RestoreSelectionForCurrentScreen();
             RenderCurrentScreen();
             RefreshSelectionState();
         }
@@ -270,7 +276,7 @@ public class MainWindowViewModel : ViewModelBase
         {
             _loggingService.Info("Idle", "Attract mode exited");
             _navigationStateService.ExitAttractMode();
-            SelectedIndex = 0;
+            RestoreSelectionForCurrentScreen();
             RenderCurrentScreen();
             RefreshSelectionState();
         }
@@ -325,26 +331,17 @@ public class MainWindowViewModel : ViewModelBase
 
         if (issues.Count > 0)
         {
-            foreach (string issue in issues)
-            {
-                _loggingService.Warning("Environment", issue);
-            }
+            foreach (string issue in issues) _loggingService.Warning("Environment", issue);
         }
 
-        StatusText = issues.Count > 0
-            ? $"Missing dependencies: {string.Join(", ", issues)}"
-            : "Ready";
+        StatusText = issues.Count > 0 ? $"Missing dependencies: {string.Join(", ", issues)}" : "Ready";
     }
 
     private void RefreshDiagnostics()
     {
         DiagnosticLines.Clear();
         DiagnosticLines.Add(_adminDiagnosticsService.BuildSummary());
-
-        if (!_settings.EnableDiagnosticLogging)
-        {
-            return;
-        }
+        if (!_settings.EnableDiagnosticLogging) return;
 
         foreach (AppLogEntry entry in _adminDiagnosticsService.GetRecentLogs().TakeLast(12))
         {
@@ -438,6 +435,7 @@ public class MainWindowViewModel : ViewModelBase
         if (SelectedIndex < 0) SelectedIndex = MenuItems.Count - 1;
         else if (SelectedIndex >= MenuItems.Count) SelectedIndex = 0;
 
+        SaveCurrentSelection();
         RefreshSelectionState();
         UpdateStatusForCurrentScreen();
     }
@@ -448,7 +446,6 @@ public class MainWindowViewModel : ViewModelBase
         if (MenuItems.Count == 0 || SelectedIndex < 0 || SelectedIndex >= MenuItems.Count) return;
 
         MenuItemViewModel item = MenuItems[SelectedIndex];
-
         switch (item.Action)
         {
             case MenuAction.None:
@@ -471,17 +468,15 @@ public class MainWindowViewModel : ViewModelBase
                 break;
             case MenuAction.OpenSettings:
             case MenuAction.OpenAdminMenu:
-                if (_adminStateService.IsUnlocked)
-                {
-                    NavigateTo(ScreenType.AdminMenu);
-                    RefreshDiagnostics();
-                }
+                if (_adminStateService.IsUnlocked) { NavigateTo(ScreenType.AdminMenu); RefreshDiagnostics(); }
                 else StatusText = "Admin locked";
                 break;
             case MenuAction.OpenSystemGames:
                 _loggingService.Info("Navigation", $"Opening system: {item.Value}");
                 _navigationStateService.OpenSystem(item.Value);
-                SelectedIndex = 0;
+                _uiState.LastSelectedSystem = item.Value;
+                _uiStateStoreService.Save(_uiState);
+                RestoreSelectionForCurrentScreen();
                 RenderCurrentScreen();
                 RefreshSelectionState();
                 break;
@@ -492,13 +487,11 @@ public class MainWindowViewModel : ViewModelBase
                 {
                     LaunchResult result = _launchFlowService.Launch(item.Game);
                     StatusText = result.Message;
-
                     if (_settings.EnableLaunchLogging)
                     {
                         if (result.Success) _loggingService.Info("Launch", result.Message);
                         else _loggingService.Error("Launch", result.Message);
                     }
-
                     if (!result.Success) errorMessage = result.Message;
                     RefreshDiagnostics();
                 }
@@ -538,17 +531,10 @@ public class MainWindowViewModel : ViewModelBase
     private void ToggleFavorite()
     {
         Game? selectedGame = GetSelectedGame();
-        if (selectedGame is null)
-        {
-            StatusText = "No game selected";
-            return;
-        }
+        if (selectedGame is null) { StatusText = "No game selected"; return; }
 
         _favoritesService.ToggleFavorite(selectedGame, _libraryService.Games);
-        StatusText = selectedGame.IsFavorite
-            ? $"Added to favorites: {selectedGame.Title}"
-            : $"Removed from favorites: {selectedGame.Title}";
-
+        StatusText = selectedGame.IsFavorite ? $"Added to favorites: {selectedGame.Title}" : $"Removed from favorites: {selectedGame.Title}";
         _loggingService.Info("Favorites", StatusText);
         RefreshDiagnostics();
         RenderCurrentScreen();
@@ -562,22 +548,38 @@ public class MainWindowViewModel : ViewModelBase
 
     private void HandleBackOrExit()
     {
-        if (_navigationStateService.CurrentScreen == ScreenType.MainMenu)
-        {
-            ShouldExit = true;
-            return;
-        }
-
+        if (_navigationStateService.CurrentScreen == ScreenType.MainMenu) { ShouldExit = true; return; }
         NavigateTo(_navigationStateService.ResolveBackTarget());
     }
 
     private void NavigateTo(ScreenType targetScreen)
     {
+        SaveCurrentSelection();
         _loggingService.Info("Navigation", $"NavigateTo: {targetScreen}");
         _navigationStateService.NavigateTo(targetScreen);
-        SelectedIndex = 0;
+        RestoreSelectionForCurrentScreen();
         RenderCurrentScreen();
         RefreshSelectionState();
+    }
+
+    private void SaveCurrentSelection()
+    {
+        if (!_settings.PersistMenuSelectionMemory) return;
+        string key = BuildScreenStateKey(_navigationStateService.CurrentScreen, _navigationStateService.SelectedSystem);
+        _uiStateStoreService.SetSelectedIndex(_uiState, key, SelectedIndex);
+        _uiStateStoreService.Save(_uiState);
+    }
+
+    private void RestoreSelectionForCurrentScreen()
+    {
+        if (!_settings.PersistMenuSelectionMemory) { SelectedIndex = 0; return; }
+        string key = BuildScreenStateKey(_navigationStateService.CurrentScreen, _navigationStateService.SelectedSystem);
+        SelectedIndex = _uiStateStoreService.GetSelectedIndex(_uiState, key);
+    }
+
+    private static string BuildScreenStateKey(ScreenType screen, string selectedSystem)
+    {
+        return screen == ScreenType.GamesMenu ? $"{screen}:{selectedSystem}" : screen.ToString();
     }
 
     private void RenderCurrentScreen()
@@ -618,27 +620,13 @@ public class MainWindowViewModel : ViewModelBase
     {
         if (MenuItems.Count == 0) return;
         EnsureValidSelection();
-
-        for (int i = 0; i < MenuItems.Count; i++)
-        {
-            MenuItems[i].IsSelected = i == SelectedIndex;
-        }
+        for (int i = 0; i < MenuItems.Count; i++) MenuItems[i].IsSelected = i == SelectedIndex;
     }
 
     private void UpdateStatusForCurrentScreen()
     {
-        if (_navigationStateService.CurrentScreen == ScreenType.AttractMode)
-        {
-            StatusText = "Press any key to return";
-            return;
-        }
-
-        if (MenuItems.Count == 0)
-        {
-            StatusText = "No items available";
-            return;
-        }
-
+        if (_navigationStateService.CurrentScreen == ScreenType.AttractMode) { StatusText = "Press any key to return"; return; }
+        if (MenuItems.Count == 0) { StatusText = "No items available"; return; }
         EnsureValidSelection();
         StatusText = $"{TitleText} - Selected: {MenuItems[SelectedIndex].Label}";
     }
