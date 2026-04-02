@@ -43,4 +43,6 @@ public sealed class AppSettings
     public string MenuBackSoundPath { get; set; } = @"Assets\Audio\menu-back.wav";
     public string LaunchSoundPath { get; set; } = @"Assets\Audio\launch.wav";
     public string AmbientMusicPath { get; set; } = @"Assets\Audio\ambient.mp3";
+
+    public string RevealVideoPath { get; set; } = @"Assets\Video\reveal.mp4";
 }

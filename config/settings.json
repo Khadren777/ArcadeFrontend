@@ -29,5 +29,6 @@
   "MenuSelectSoundPath": "Assets\\\\Audio\\\\menu-select.wav",
   "MenuBackSoundPath": "Assets\\\\Audio\\\\menu-back.wav",
   "LaunchSoundPath": "Assets\\\\Audio\\\\launch.wav",
-  "AmbientMusicPath": "Assets\\\\Audio\\\\ambient.mp3"
+  "AmbientMusicPath": "Assets\\\\Audio\\\\ambient.mp3",
+  "RevealVideoPath": "Assets\\\\Video\\\\reveal.mp4"
 }

@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -24,6 +25,7 @@ public partial class MainWindow : Window
     private readonly SettingsService _settingsService;
     private readonly SoundStateService _soundStateService;
     private readonly AudioCueService _audioCueService;
+    private readonly RevealMediaService _revealMediaService;
     private readonly MediaPlayer _ambientMusicPlayer = new();
 
     public MainWindow()
@@ -51,6 +53,7 @@ public partial class MainWindow : Window
         var uiStateStoreService = new UiStateStoreService(baseDirectory);
         _soundStateService = new SoundStateService(pathService);
         _audioCueService = new AudioCueService();
+        _revealMediaService = new RevealMediaService(pathService);
         var launchGuardService = new LaunchGuardService();
         var revealSequenceService = new SecretSequenceService(new[] { Key.Up, Key.Up, Key.Down, Key.Down, Key.Enter });
 
@@ -193,9 +196,37 @@ public partial class MainWindow : Window
 
     private void TryConsumeReveal()
     {
-        if (_shellViewModel.Main.ConsumeRevealRequested())
+        if (!_shellViewModel.Main.ConsumeRevealRequested())
+            return;
+
+        AppSettings settings = _settingsService.LoadSettings();
+        string revealVideoPath = _revealMediaService.ResolveRevealVideoPath(settings.RevealVideoPath);
+
+        if (string.IsNullOrWhiteSpace(revealVideoPath))
         {
-            MessageBox.Show("Reveal trigger detected.", "Hidden Reveal", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(
+                "Reveal sequence detected, but the reveal video file was not found.",
+                "Hidden Reveal",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = revealVideoPath,
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"Reveal video launch failed. {ex.Message}",
+                "Hidden Reveal",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
         }
     }
 
@@ -206,7 +237,8 @@ public partial class MainWindow : Window
 
     private void RefreshMediaPlayback()
     {
-        if (_shellViewModel.Main.ShowAttractVideo && !string.IsNullOrWhiteSpace(_shellViewModel.Main.AttractVideoPath))
+        if (_shellViewModel.Main.ShowAttractVideo &&
+            !string.IsNullOrWhiteSpace(_shellViewModel.Main.AttractVideoPath))
         {
             try
             {
