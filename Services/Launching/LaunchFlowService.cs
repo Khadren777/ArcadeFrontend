@@ -33,10 +33,8 @@ public sealed class LaunchFlowService
         try
         {
             AppSettings settings = _settingsService.LoadSettings();
-
             _gameLauncherService.LaunchGame(game, _libraryService.EmulatorProfiles.ToList());
             _recentSessionService.RecordLaunch(game, settings.MaxRecentGames);
-
             return LaunchResult.Succeeded($"Launched: {game.Title}");
         }
         catch (Exception ex)

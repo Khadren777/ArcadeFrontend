@@ -10,7 +10,8 @@
         WindowStartupLocation="CenterScreen"
         Background="Black"
         Loaded="Window_Loaded"
-        KeyDown="Window_KeyDown">
+        KeyDown="Window_KeyDown"
+        Closing="Window_Closing">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
 
@@ -42,16 +43,30 @@
                Opacity="0.38"
                IsHitTestVisible="False" />
 
-        <MediaElement Source="{Binding AttractVideoPath}"
-                      LoadedBehavior="Play"
-                      UnloadedBehavior="Stop"
+        <MediaElement x:Name="AttractVideoPlayer"
+                      Source="{Binding AttractVideoPath}"
+                      LoadedBehavior="Manual"
+                      UnloadedBehavior="Manual"
                       Stretch="UniformToFill"
                       Volume="0"
                       IsMuted="True"
+                      MediaEnded="AttractVideoPlayer_MediaEnded"
+                      MediaFailed="AttractVideoPlayer_MediaFailed"
                       Visibility="{Binding ShowAttractVideo, Converter={StaticResource BoolToVisibilityConverter}}"
                       IsHitTestVisible="False" />
 
-        <Rectangle Fill="#B0000000" />
+        <Rectangle Fill="#B0000000">
+            <Rectangle.Style>
+                <Style TargetType="Rectangle">
+                    <Setter Property="Opacity" Value="1" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding DimBackgroundUnderVideo}" Value="False">
+                            <Setter Property="Opacity" Value="0.72" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Rectangle.Style>
+        </Rectangle>
 
         <Grid Margin="32">
             <Grid.ColumnDefinitions>

@@ -1,8 +1,5 @@
-using System;
 using System.IO;
 using ArcadeFrontend.Models;
-using ArcadeFrontend.Services.Navigation;
-using ArcadeFrontend.Services.State;
 
 /// <summary>
 /// Builds screen-appropriate visual state for the frontend.
@@ -32,6 +29,7 @@ public sealed class VisualStateService
                                settings.UseAttractModeVideo &&
                                !string.IsNullOrWhiteSpace(attractVideoPath),
             ShowDiagnosticsPanel = currentScreen == ScreenType.AdminMenu && adminUnlocked,
+            DimBackgroundUnderVideo = settings.DimBackgroundUnderVideo,
             SubtitleText = subtitle
         };
     }
@@ -43,29 +41,18 @@ public sealed class VisualStateService
             return string.Empty;
         }
 
-        switch (currentScreen)
+        return currentScreen switch
         {
-            case ScreenType.MainMenu:
-                return ResolveOptionalPath(settings.MainMenuBackgroundPath);
-
-            case ScreenType.SystemsMenu:
-                return ResolveOptionalPath(settings.SystemsBackgroundPath);
-
-            case ScreenType.AdminMenu:
-                return ResolveOptionalPath(settings.AdminBackgroundPath);
-
-            case ScreenType.FavoritesMenu:
-                return ResolveOptionalPath(settings.FavoritesBackgroundPath);
-
-            case ScreenType.RecentGamesMenu:
-                return ResolveOptionalPath(settings.RecentBackgroundPath);
-
-            case ScreenType.GamesMenu:
-                return ResolveSystemBackground(selectedSystem, settings);
-
-            default:
-                return ResolveOptionalPath(settings.MainMenuBackgroundPath);
-        }
+            ScreenType.MainMenu => ResolveOptionalPath(settings.MainMenuBackgroundPath),
+            ScreenType.SystemsMenu => ResolveOptionalPath(settings.SystemsBackgroundPath),
+            ScreenType.AdminMenu => ResolveOptionalPath(settings.AdminBackgroundPath),
+            ScreenType.FavoritesMenu => ResolveOptionalPath(settings.FavoritesBackgroundPath),
+            ScreenType.RecentGamesMenu => ResolveOptionalPath(settings.RecentBackgroundPath),
+            ScreenType.HiddenGamesMenu => ResolveOptionalPath(settings.HiddenGamesBackgroundPath),
+            ScreenType.AttractMode => ResolveOptionalPath(settings.AttractModeBackgroundPath),
+            ScreenType.GamesMenu => ResolveSystemBackground(selectedSystem, settings),
+            _ => ResolveOptionalPath(settings.MainMenuBackgroundPath)
+        };
     }
 
     private string ResolveSystemBackground(string selectedSystem, AppSettings settings)

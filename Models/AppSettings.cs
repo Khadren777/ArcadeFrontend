@@ -15,6 +15,8 @@ public sealed class AppSettings
 
     public bool EnableBackgroundImages { get; set; } = true;
     public bool UseAttractModeVideo { get; set; } = false;
+    public bool LoopAttractVideo { get; set; } = true;
+    public bool DimBackgroundUnderVideo { get; set; } = true;
 
     public string BackgroundImageFolder { get; set; } = @"Assets\Backgrounds";
     public string MainMenuBackgroundPath { get; set; } = @"Assets\Backgrounds\main.jpg";
@@ -22,5 +24,7 @@ public sealed class AppSettings
     public string AdminBackgroundPath { get; set; } = @"Assets\Backgrounds\admin.jpg";
     public string FavoritesBackgroundPath { get; set; } = @"Assets\Backgrounds\favorites.jpg";
     public string RecentBackgroundPath { get; set; } = @"Assets\Backgrounds\recent.jpg";
+    public string HiddenGamesBackgroundPath { get; set; } = @"Assets\Backgrounds\hidden.jpg";
+    public string AttractModeBackgroundPath { get; set; } = @"Assets\Backgrounds\attract.jpg";
     public string AttractVideoPath { get; set; } = @"Assets\Video\attract.mp4";
 }

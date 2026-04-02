@@ -41,6 +41,7 @@ public class MainWindowViewModel : ViewModelBase
     private string _attractVideoPath = string.Empty;
     private bool _showAttractVideo;
     private bool _showDiagnosticsPanel;
+    private bool _dimBackgroundUnderVideo = true;
     private AppSettings _settings = new();
 
     public ObservableCollection<MenuItemViewModel> MenuItems { get; } = new();
@@ -49,78 +50,49 @@ public class MainWindowViewModel : ViewModelBase
     public string TitleText
     {
         get => _titleText;
-        private set
-        {
-            if (_titleText == value) return;
-            _titleText = value;
-            OnPropertyChanged();
-        }
+        private set { if (_titleText == value) return; _titleText = value; OnPropertyChanged(); }
     }
 
     public string StatusText
     {
         get => _statusText;
-        private set
-        {
-            if (_statusText == value) return;
-            _statusText = value;
-            OnPropertyChanged();
-        }
+        private set { if (_statusText == value) return; _statusText = value; OnPropertyChanged(); }
     }
 
     public string SubtitleText
     {
         get => _subtitleText;
-        private set
-        {
-            if (_subtitleText == value) return;
-            _subtitleText = value;
-            OnPropertyChanged();
-        }
+        private set { if (_subtitleText == value) return; _subtitleText = value; OnPropertyChanged(); }
     }
 
     public string BackgroundImagePath
     {
         get => _backgroundImagePath;
-        private set
-        {
-            if (_backgroundImagePath == value) return;
-            _backgroundImagePath = value;
-            OnPropertyChanged();
-        }
+        private set { if (_backgroundImagePath == value) return; _backgroundImagePath = value; OnPropertyChanged(); }
     }
 
     public string AttractVideoPath
     {
         get => _attractVideoPath;
-        private set
-        {
-            if (_attractVideoPath == value) return;
-            _attractVideoPath = value;
-            OnPropertyChanged();
-        }
+        private set { if (_attractVideoPath == value) return; _attractVideoPath = value; OnPropertyChanged(); }
     }
 
     public bool ShowAttractVideo
     {
         get => _showAttractVideo;
-        private set
-        {
-            if (_showAttractVideo == value) return;
-            _showAttractVideo = value;
-            OnPropertyChanged();
-        }
+        private set { if (_showAttractVideo == value) return; _showAttractVideo = value; OnPropertyChanged(); }
     }
 
     public bool ShowDiagnosticsPanel
     {
         get => _showDiagnosticsPanel;
-        private set
-        {
-            if (_showDiagnosticsPanel == value) return;
-            _showDiagnosticsPanel = value;
-            OnPropertyChanged();
-        }
+        private set { if (_showDiagnosticsPanel == value) return; _showDiagnosticsPanel = value; OnPropertyChanged(); }
+    }
+
+    public bool DimBackgroundUnderVideo
+    {
+        get => _dimBackgroundUnderVideo;
+        private set { if (_dimBackgroundUnderVideo == value) return; _dimBackgroundUnderVideo = value; OnPropertyChanged(); }
     }
 
     public int SelectedIndex
@@ -138,12 +110,7 @@ public class MainWindowViewModel : ViewModelBase
     public bool ShouldExit
     {
         get => _shouldExit;
-        private set
-        {
-            if (_shouldExit == value) return;
-            _shouldExit = value;
-            OnPropertyChanged();
-        }
+        private set { if (_shouldExit == value) return; _shouldExit = value; OnPropertyChanged(); }
     }
 
     public MainWindowViewModel(
@@ -187,13 +154,20 @@ public class MainWindowViewModel : ViewModelBase
 
     public void Initialize()
     {
-        _settings = _settingsService.LoadSettings();
+        ReloadSettings();
         _libraryService.Load();
         _recentSessionService.Load();
         ValidateEnvironment();
         _idleStateService.Start();
         _loggingService.Info("App", "Frontend initialized");
         RenderCurrentScreen();
+        RefreshDiagnostics();
+    }
+
+    public void ReloadSettings()
+    {
+        _settings = _settingsService.LoadSettings();
+        RefreshVisualState();
         RefreshDiagnostics();
     }
 
@@ -213,36 +187,21 @@ public class MainWindowViewModel : ViewModelBase
 
     public void MoveSelectionUp()
     {
-        if (_idleStateService.IsInAttractMode)
-        {
-            TryExitAttractMode();
-            return;
-        }
-
+        if (_idleStateService.IsInAttractMode) { TryExitAttractMode(); return; }
         _idleStateService.NotifyUserInteraction();
         MoveSelection(-1);
     }
 
     public void MoveSelectionDown()
     {
-        if (_idleStateService.IsInAttractMode)
-        {
-            TryExitAttractMode();
-            return;
-        }
-
+        if (_idleStateService.IsInAttractMode) { TryExitAttractMode(); return; }
         _idleStateService.NotifyUserInteraction();
         MoveSelection(1);
     }
 
     public void MoveSelectionLeft()
     {
-        if (_idleStateService.IsInAttractMode)
-        {
-            TryExitAttractMode();
-            return;
-        }
-
+        if (_idleStateService.IsInAttractMode) { TryExitAttractMode(); return; }
         _idleStateService.NotifyUserInteraction();
     }
 
@@ -267,36 +226,21 @@ public class MainWindowViewModel : ViewModelBase
 
     public void NavigateBack()
     {
-        if (_idleStateService.IsInAttractMode)
-        {
-            TryExitAttractMode();
-            return;
-        }
-
+        if (_idleStateService.IsInAttractMode) { TryExitAttractMode(); return; }
         _idleStateService.NotifyUserInteraction();
         HandleBackOrExit();
     }
 
     public void ToggleSelectedFavorite()
     {
-        if (_idleStateService.IsInAttractMode)
-        {
-            TryExitAttractMode();
-            return;
-        }
-
+        if (_idleStateService.IsInAttractMode) { TryExitAttractMode(); return; }
         _idleStateService.NotifyUserInteraction();
         ToggleFavorite();
     }
 
     public bool RegisterAdminPulse(Key key)
     {
-        if (_idleStateService.IsInAttractMode)
-        {
-            TryExitAttractMode();
-            return true;
-        }
-
+        if (_idleStateService.IsInAttractMode) { TryExitAttractMode(); return true; }
         _idleStateService.NotifyUserInteraction();
 
         if (_adminStateService.RegisterKey(key))
@@ -313,12 +257,7 @@ public class MainWindowViewModel : ViewModelBase
 
     public void OpenServiceMode()
     {
-        if (_idleStateService.IsInAttractMode)
-        {
-            TryExitAttractMode();
-            return;
-        }
-
+        if (_idleStateService.IsInAttractMode) { TryExitAttractMode(); return; }
         _idleStateService.NotifyUserInteraction();
         _loggingService.Info("Admin", "Service mode opened");
         NavigateTo(ScreenType.AdminMenu);
@@ -347,34 +286,16 @@ public class MainWindowViewModel : ViewModelBase
             return true;
         }
 
-        if (RegisterAdminPulse(key))
-        {
-            return true;
-        }
+        if (RegisterAdminPulse(key)) return true;
 
         switch (key)
         {
-            case Key.Up:
-                MoveSelectionUp();
-                return true;
-
-            case Key.Down:
-                MoveSelectionDown();
-                return true;
-
-            case Key.Right:
-                MoveSelectionRight();
-                return true;
-
-            case Key.Enter:
-                return SelectCurrent(out errorMessage);
-
-            case Key.Escape:
-                NavigateBack();
-                return true;
-
-            default:
-                return false;
+            case Key.Up: MoveSelectionUp(); return true;
+            case Key.Down: MoveSelectionDown(); return true;
+            case Key.Right: MoveSelectionRight(); return true;
+            case Key.Enter: return SelectCurrent(out errorMessage);
+            case Key.Escape: NavigateBack(); return true;
+            default: return false;
         }
     }
 
@@ -385,16 +306,8 @@ public class MainWindowViewModel : ViewModelBase
 
     private void EnsureValidSelection()
     {
-        if (MenuItems.Count == 0)
-        {
-            SelectedIndex = 0;
-            return;
-        }
-
-        if (SelectedIndex < 0 || SelectedIndex >= MenuItems.Count)
-        {
-            SelectedIndex = 0;
-        }
+        if (MenuItems.Count == 0) { SelectedIndex = 0; return; }
+        if (SelectedIndex < 0 || SelectedIndex >= MenuItems.Count) SelectedIndex = 0;
     }
 
     private void ValidateEnvironment()
@@ -404,7 +317,6 @@ public class MainWindowViewModel : ViewModelBase
         foreach (EmulatorProfile emulator in _libraryService.EmulatorProfiles)
         {
             string resolvedPath = _pathService.Resolve(emulator.ExecutablePath);
-
             if (!File.Exists(resolvedPath))
             {
                 issues.Add($"Missing emulator: {emulator.DisplayName}");
@@ -452,6 +364,7 @@ public class MainWindowViewModel : ViewModelBase
         AttractVideoPath = state.AttractVideoPath;
         ShowAttractVideo = state.ShowAttractVideo;
         ShowDiagnosticsPanel = state.ShowDiagnosticsPanel;
+        DimBackgroundUnderVideo = state.DimBackgroundUnderVideo;
         SubtitleText = state.SubtitleText;
     }
 
@@ -462,11 +375,7 @@ public class MainWindowViewModel : ViewModelBase
             item.IsLaunchAvailable = true;
             item.LaunchIssue = string.Empty;
 
-            if (item.Game == null)
-            {
-                continue;
-            }
-
+            if (item.Game == null) continue;
             Game game = item.Game;
 
             if (game.LaunchType == LaunchType.Emulator)
@@ -481,7 +390,6 @@ public class MainWindowViewModel : ViewModelBase
                 }
 
                 string resolvedExecutablePath = _pathService.Resolve(emulator.ExecutablePath);
-
                 if (!File.Exists(resolvedExecutablePath))
                 {
                     item.IsLaunchAvailable = false;
@@ -497,7 +405,6 @@ public class MainWindowViewModel : ViewModelBase
                 }
 
                 string resolvedRomPath = _pathService.Resolve(game.RomPath);
-
                 if (!File.Exists(resolvedRomPath) && !Directory.Exists(resolvedRomPath))
                 {
                     item.IsLaunchAvailable = false;
@@ -514,7 +421,6 @@ public class MainWindowViewModel : ViewModelBase
                 }
 
                 string resolvedLaunchTarget = _pathService.Resolve(game.LaunchTarget);
-
                 if (!File.Exists(resolvedLaunchTarget))
                 {
                     item.IsLaunchAvailable = false;
@@ -526,21 +432,11 @@ public class MainWindowViewModel : ViewModelBase
 
     private void MoveSelection(int direction)
     {
-        if (MenuItems.Count == 0)
-        {
-            return;
-        }
+        if (MenuItems.Count == 0) return;
 
         SelectedIndex += direction;
-
-        if (SelectedIndex < 0)
-        {
-            SelectedIndex = MenuItems.Count - 1;
-        }
-        else if (SelectedIndex >= MenuItems.Count)
-        {
-            SelectedIndex = 0;
-        }
+        if (SelectedIndex < 0) SelectedIndex = MenuItems.Count - 1;
+        else if (SelectedIndex >= MenuItems.Count) SelectedIndex = 0;
 
         RefreshSelectionState();
         UpdateStatusForCurrentScreen();
@@ -549,11 +445,7 @@ public class MainWindowViewModel : ViewModelBase
     private void ActivateSelectedItem(out string? errorMessage)
     {
         errorMessage = null;
-
-        if (MenuItems.Count == 0 || SelectedIndex < 0 || SelectedIndex >= MenuItems.Count)
-        {
-            return;
-        }
+        if (MenuItems.Count == 0 || SelectedIndex < 0 || SelectedIndex >= MenuItems.Count) return;
 
         MenuItemViewModel item = MenuItems[SelectedIndex];
 
@@ -561,34 +453,22 @@ public class MainWindowViewModel : ViewModelBase
         {
             case MenuAction.None:
                 break;
-
             case MenuAction.Play:
                 StatusText = "Play selected";
                 break;
-
             case MenuAction.OpenSystems:
                 NavigateTo(ScreenType.SystemsMenu);
                 break;
-
             case MenuAction.OpenFavorites:
                 NavigateTo(ScreenType.FavoritesMenu);
                 break;
-
             case MenuAction.OpenRecentGames:
                 NavigateTo(ScreenType.RecentGamesMenu);
                 break;
-
             case MenuAction.OpenHiddenGames:
-                if (_adminStateService.IsUnlocked && _settings.ShowHiddenGamesInAdmin)
-                {
-                    NavigateTo(ScreenType.HiddenGamesMenu);
-                }
-                else
-                {
-                    StatusText = "Hidden Games locked";
-                }
+                if (_adminStateService.IsUnlocked && _settings.ShowHiddenGamesInAdmin) NavigateTo(ScreenType.HiddenGamesMenu);
+                else StatusText = "Hidden Games locked";
                 break;
-
             case MenuAction.OpenSettings:
             case MenuAction.OpenAdminMenu:
                 if (_adminStateService.IsUnlocked)
@@ -596,12 +476,8 @@ public class MainWindowViewModel : ViewModelBase
                     NavigateTo(ScreenType.AdminMenu);
                     RefreshDiagnostics();
                 }
-                else
-                {
-                    StatusText = "Admin locked";
-                }
+                else StatusText = "Admin locked";
                 break;
-
             case MenuAction.OpenSystemGames:
                 _loggingService.Info("Navigation", $"Opening system: {item.Value}");
                 _navigationStateService.OpenSystem(item.Value);
@@ -609,7 +485,6 @@ public class MainWindowViewModel : ViewModelBase
                 RenderCurrentScreen();
                 RefreshSelectionState();
                 break;
-
             case MenuAction.LaunchGame:
             case MenuAction.LaunchHiddenGame:
             case MenuAction.LaunchRecentGame:
@@ -620,35 +495,22 @@ public class MainWindowViewModel : ViewModelBase
 
                     if (_settings.EnableLaunchLogging)
                     {
-                        if (result.Success)
-                        {
-                            _loggingService.Info("Launch", result.Message);
-                        }
-                        else
-                        {
-                            _loggingService.Error("Launch", result.Message);
-                        }
+                        if (result.Success) _loggingService.Info("Launch", result.Message);
+                        else _loggingService.Error("Launch", result.Message);
                     }
 
-                    if (!result.Success)
-                    {
-                        errorMessage = result.Message;
-                    }
-
+                    if (!result.Success) errorMessage = result.Message;
                     RefreshDiagnostics();
                 }
                 break;
-
             case MenuAction.ToggleFavorite:
                 ToggleFavorite();
                 break;
-
             case MenuAction.ExitApp:
                 ShouldExit = true;
                 _loggingService.Info("App", "Exit requested");
                 RefreshDiagnostics();
                 break;
-
             case MenuAction.RescanLibrary:
                 _libraryService.Reload();
                 StatusText = "Library rescanned";
@@ -656,21 +518,17 @@ public class MainWindowViewModel : ViewModelBase
                 RenderCurrentScreen();
                 RefreshDiagnostics();
                 break;
-
             case MenuAction.InputTest:
                 StatusText = "Input Test selected";
                 _loggingService.Info("Admin", "Input test selected");
                 RefreshDiagnostics();
                 break;
-
             case MenuAction.BackToMain:
                 NavigateTo(ScreenType.MainMenu);
                 break;
-
             case MenuAction.BackToSystems:
                 NavigateTo(ScreenType.SystemsMenu);
                 break;
-
             case MenuAction.BackToAdmin:
                 NavigateTo(ScreenType.AdminMenu);
                 break;
@@ -680,7 +538,6 @@ public class MainWindowViewModel : ViewModelBase
     private void ToggleFavorite()
     {
         Game? selectedGame = GetSelectedGame();
-
         if (selectedGame is null)
         {
             StatusText = "No game selected";
@@ -699,11 +556,7 @@ public class MainWindowViewModel : ViewModelBase
 
     private Game? GetSelectedGame()
     {
-        if (SelectedIndex < 0 || SelectedIndex >= MenuItems.Count)
-        {
-            return null;
-        }
-
+        if (SelectedIndex < 0 || SelectedIndex >= MenuItems.Count) return null;
         return MenuItems[SelectedIndex].Game;
     }
 
@@ -730,7 +583,6 @@ public class MainWindowViewModel : ViewModelBase
     private void RenderCurrentScreen()
     {
         MenuScreen screen = BuildScreenForCurrentState();
-
         TitleText = screen.Title;
         MenuItems.Clear();
 
@@ -764,11 +616,7 @@ public class MainWindowViewModel : ViewModelBase
 
     private void RefreshSelectionState()
     {
-        if (MenuItems.Count == 0)
-        {
-            return;
-        }
-
+        if (MenuItems.Count == 0) return;
         EnsureValidSelection();
 
         for (int i = 0; i < MenuItems.Count; i++)

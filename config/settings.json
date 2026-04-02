@@ -6,11 +6,15 @@
   "EnableDiagnosticLogging": true,
   "EnableBackgroundImages": true,
   "UseAttractModeVideo": false,
+  "LoopAttractVideo": true,
+  "DimBackgroundUnderVideo": true,
   "BackgroundImageFolder": "Assets\\\\Backgrounds",
   "MainMenuBackgroundPath": "Assets\\\\Backgrounds\\\\main.jpg",
   "SystemsBackgroundPath": "Assets\\\\Backgrounds\\\\systems.jpg",
   "AdminBackgroundPath": "Assets\\\\Backgrounds\\\\admin.jpg",
   "FavoritesBackgroundPath": "Assets\\\\Backgrounds\\\\favorites.jpg",
   "RecentBackgroundPath": "Assets\\\\Backgrounds\\\\recent.jpg",
+  "HiddenGamesBackgroundPath": "Assets\\\\Backgrounds\\\\hidden.jpg",
+  "AttractModeBackgroundPath": "Assets\\\\Backgrounds\\\\attract.jpg",
   "AttractVideoPath": "Assets\\\\Video\\\\attract.mp4"
 }

@@ -9,5 +9,6 @@ public sealed class VisualStateSnapshot
     public string AttractVideoPath { get; init; } = string.Empty;
     public bool ShowAttractVideo { get; init; }
     public bool ShowDiagnosticsPanel { get; init; }
+    public bool DimBackgroundUnderVideo { get; init; }
     public string SubtitleText { get; init; } = string.Empty;
 }
