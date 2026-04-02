@@ -31,6 +31,8 @@ public class MainWindowViewModel : ViewModelBase
     private readonly UiStateStoreService _uiStateStoreService;
     private readonly SoundStateService _soundStateService;
     private readonly AudioCueService _audioCueService;
+    private readonly LaunchGuardService _launchGuardService;
+    private readonly SecretSequenceService _revealSequenceService;
 
     private bool _shouldExit;
     private int _selectedIndex;
@@ -46,6 +48,7 @@ public class MainWindowViewModel : ViewModelBase
     private UiStateSnapshot _uiState = new();
     private SoundStateSnapshot _soundState = new();
     private SoundEffectType _pendingSoundEffect = SoundEffectType.None;
+    private bool _revealRequested;
 
     public ObservableCollection<MenuItemViewModel> MenuItems { get; } = new();
     public ObservableCollection<string> DiagnosticLines { get; } = new();
@@ -82,6 +85,17 @@ public class MainWindowViewModel : ViewModelBase
         }
     }
 
+    public bool RevealRequested
+    {
+        get => _revealRequested;
+        private set
+        {
+            if (_revealRequested == value) return;
+            _revealRequested = value;
+            OnPropertyChanged();
+        }
+    }
+
     public MainWindowViewModel(
         LibraryService libraryService,
         LaunchFlowService launchFlowService,
@@ -98,7 +112,9 @@ public class MainWindowViewModel : ViewModelBase
         VisualStateService visualStateService,
         UiStateStoreService uiStateStoreService,
         SoundStateService soundStateService,
-        AudioCueService audioCueService)
+        AudioCueService audioCueService,
+        LaunchGuardService launchGuardService,
+        SecretSequenceService revealSequenceService)
     {
         _libraryService = libraryService;
         _launchFlowService = launchFlowService;
@@ -116,6 +132,8 @@ public class MainWindowViewModel : ViewModelBase
         _uiStateStoreService = uiStateStoreService;
         _soundStateService = soundStateService;
         _audioCueService = audioCueService;
+        _launchGuardService = launchGuardService;
+        _revealSequenceService = revealSequenceService;
 
         _idleStateService.AttractModeRequested += (_, _) =>
         {
@@ -224,6 +242,14 @@ public class MainWindowViewModel : ViewModelBase
         if (_idleStateService.IsInAttractMode) { TryExitAttractMode(); return true; }
         _idleStateService.NotifyUserInteraction();
 
+        if (_revealSequenceService.Register(key))
+        {
+            RevealRequested = true;
+            StatusText = "Reveal trigger armed";
+            _loggingService.Info("Reveal", "Hidden reveal sequence detected");
+            return true;
+        }
+
         if (_adminStateService.RegisterKey(key))
         {
             _loggingService.Info("Admin", "Admin unlocked");
@@ -274,15 +300,19 @@ public class MainWindowViewModel : ViewModelBase
         }
     }
 
-    public void ClearExitRequest()
-    {
-        ShouldExit = false;
-    }
+    public void ClearExitRequest() { ShouldExit = false; }
 
     public SoundEffectType ConsumePendingSoundEffect()
     {
         SoundEffectType result = PendingSoundEffect;
         PendingSoundEffect = SoundEffectType.None;
+        return result;
+    }
+
+    public bool ConsumeRevealRequested()
+    {
+        bool result = RevealRequested;
+        RevealRequested = false;
         return result;
     }
 
@@ -304,15 +334,11 @@ public class MainWindowViewModel : ViewModelBase
         {
             string resolvedPath = _pathService.Resolve(emulator.ExecutablePath);
             if (!File.Exists(resolvedPath))
-            {
                 issues.Add($"Missing emulator: {emulator.DisplayName}");
-            }
         }
 
         if (issues.Count > 0)
-        {
             foreach (string issue in issues) _loggingService.Warning("Environment", issue);
-        }
 
         StatusText = issues.Count > 0 ? $"Missing dependencies: {string.Join(", ", issues)}" : "Ready";
     }
@@ -324,9 +350,7 @@ public class MainWindowViewModel : ViewModelBase
         if (!_settings.EnableDiagnosticLogging) return;
 
         foreach (AppLogEntry entry in _adminDiagnosticsService.GetRecentLogs().TakeLast(12))
-        {
             DiagnosticLines.Add($"[{entry.Level}] {entry.TimestampUtc:HH:mm:ss} {entry.Category} - {entry.Message}");
-        }
     }
 
     private void RefreshVisualState()
@@ -432,17 +456,32 @@ public class MainWindowViewModel : ViewModelBase
             case MenuAction.LaunchRecentGame:
                 if (item.Game != null)
                 {
-                    LaunchResult result = _launchFlowService.Launch(item.Game);
-                    StatusText = result.Message;
-                    QueueSound(_audioCueService.ForLaunch());
-
-                    if (_settings.EnableLaunchLogging)
+                    if (!_launchGuardService.CanLaunch())
                     {
-                        if (result.Success) _loggingService.Info("Launch", result.Message);
-                        else _loggingService.Error("Launch", result.Message);
+                        StatusText = "Launch blocked: please wait";
+                        errorMessage = StatusText;
+                        return;
                     }
-                    if (!result.Success) errorMessage = result.Message;
-                    RefreshDiagnostics();
+
+                    _launchGuardService.MarkLaunching();
+                    try
+                    {
+                        LaunchResult result = _launchFlowService.Launch(item.Game);
+                        StatusText = result.Message;
+                        QueueSound(_audioCueService.ForLaunch());
+
+                        if (_settings.EnableLaunchLogging)
+                        {
+                            if (result.Success) _loggingService.Info("Launch", result.Message);
+                            else _loggingService.Error("Launch", result.Message);
+                        }
+                        if (!result.Success) errorMessage = result.Message;
+                        RefreshDiagnostics();
+                    }
+                    finally
+                    {
+                        _launchGuardService.MarkComplete();
+                    }
                 }
                 break;
             case MenuAction.ToggleFavorite:
@@ -538,9 +577,7 @@ public class MainWindowViewModel : ViewModelBase
         MenuItems.Clear();
 
         foreach (MenuItemModel item in screen.Items)
-        {
             MenuItems.Add(MenuItemViewModel.FromModel(item));
-        }
 
         EnsureValidSelection();
         RefreshSelectionState();

@@ -51,6 +51,8 @@ public partial class MainWindow : Window
         var uiStateStoreService = new UiStateStoreService(baseDirectory);
         _soundStateService = new SoundStateService(pathService);
         _audioCueService = new AudioCueService();
+        var launchGuardService = new LaunchGuardService();
+        var revealSequenceService = new SecretSequenceService(new[] { Key.Up, Key.Up, Key.Down, Key.Down, Key.Enter });
 
         AppSettings settings = _settingsService.LoadSettings();
         _inputRepeatService.Configure(settings.InputRepeatInitialDelayMs, settings.InputRepeatIntervalMs);
@@ -81,12 +83,13 @@ public partial class MainWindow : Window
             visualStateService,
             uiStateStoreService,
             _soundStateService,
-            _audioCueService);
+            _audioCueService,
+            launchGuardService,
+            revealSequenceService);
 
         _shellViewModel = new ShellViewModel(mainWindowViewModel);
         DataContext = _shellViewModel.Main;
         _shellViewModel.Main.PropertyChanged += MainViewModel_PropertyChanged;
-
         _ambientMusicPlayer.MediaEnded += AmbientMusicPlayer_MediaEnded;
     }
 
@@ -149,19 +152,16 @@ public partial class MainWindow : Window
     {
         if (e.PropertyName == nameof(MainWindowViewModel.ShowAttractVideo) ||
             e.PropertyName == nameof(MainWindowViewModel.AttractVideoPath))
-        {
             RefreshMediaPlayback();
-        }
 
         if (e.PropertyName == nameof(MainWindowViewModel.PendingSoundEffect))
-        {
             TryPlayPendingSound();
-        }
 
         if (e.PropertyName == nameof(MainWindowViewModel.SoundState))
-        {
             RefreshAmbientMusic();
-        }
+
+        if (e.PropertyName == nameof(MainWindowViewModel.RevealRequested))
+            TryConsumeReveal();
     }
 
     private void ProcessKey(Key key)
@@ -170,14 +170,10 @@ public partial class MainWindow : Window
         bool handled = _inputRouterService.Route(action, _shellViewModel, out string? errorMessage);
 
         if (!handled)
-        {
             handled = _shellViewModel.Main.HandleKey(key, out errorMessage);
-        }
 
         if (!string.IsNullOrWhiteSpace(errorMessage))
-        {
             MessageBox.Show(errorMessage, "Launch Error", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
 
         if (_shellViewModel.Main.ShouldExit)
         {
@@ -191,6 +187,15 @@ public partial class MainWindow : Window
             RefreshMediaPlayback();
             RefreshAmbientMusic();
             TryPlayPendingSound();
+            TryConsumeReveal();
+        }
+    }
+
+    private void TryConsumeReveal()
+    {
+        if (_shellViewModel.Main.ConsumeRevealRequested())
+        {
+            MessageBox.Show("Reveal trigger detected.", "Hidden Reveal", MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }
 
@@ -201,8 +206,7 @@ public partial class MainWindow : Window
 
     private void RefreshMediaPlayback()
     {
-        if (_shellViewModel.Main.ShowAttractVideo &&
-            !string.IsNullOrWhiteSpace(_shellViewModel.Main.AttractVideoPath))
+        if (_shellViewModel.Main.ShowAttractVideo && !string.IsNullOrWhiteSpace(_shellViewModel.Main.AttractVideoPath))
         {
             try
             {
@@ -224,7 +228,6 @@ public partial class MainWindow : Window
     private void RefreshAmbientMusic()
     {
         SoundStateSnapshot state = _shellViewModel.Main.SoundState;
-
         if (!state.EnableAmbientMusic || string.IsNullOrWhiteSpace(state.AmbientMusicPath))
         {
             StopAmbientMusic();
@@ -235,9 +238,7 @@ public partial class MainWindow : Window
         {
             Uri source = new Uri(state.AmbientMusicPath, UriKind.Absolute);
             if (_ambientMusicPlayer.Source == null || _ambientMusicPlayer.Source != source)
-            {
                 _ambientMusicPlayer.Open(source);
-            }
 
             _ambientMusicPlayer.Volume = state.MasterVolume * state.AmbientMusicVolume;
             _ambientMusicPlayer.Play();
@@ -251,16 +252,10 @@ public partial class MainWindow : Window
     private void TryPlayPendingSound()
     {
         SoundEffectType effect = _shellViewModel.Main.ConsumePendingSoundEffect();
-        if (effect == SoundEffectType.None)
-        {
-            return;
-        }
+        if (effect == SoundEffectType.None) return;
 
         SoundStateSnapshot state = _shellViewModel.Main.SoundState;
-        if (!state.EnableMenuSounds)
-        {
-            return;
-        }
+        if (!state.EnableMenuSounds) return;
 
         string path = effect switch
         {
@@ -271,10 +266,7 @@ public partial class MainWindow : Window
             _ => string.Empty
         };
 
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            return;
-        }
+        if (string.IsNullOrWhiteSpace(path)) return;
 
         try
         {
