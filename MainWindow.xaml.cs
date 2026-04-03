@@ -1,338 +1,180 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Windows;
 using System.Windows.Input;
-using System.Windows.Media;
+using ArcadeFrontend.Infrastructure;
 using ArcadeFrontend.Models;
 using ArcadeFrontend.Services;
-using ArcadeFrontend.Services.Input;
-using ArcadeFrontend.Services.Launching;
-using ArcadeFrontend.Services.Library;
-using ArcadeFrontend.Services.Navigation;
-using ArcadeFrontend.Services.Sessions;
-using ArcadeFrontend.Services.State;
-using ArcadeFrontend.ViewModels;
 
-namespace ArcadeFrontend;
-
-public partial class MainWindow : Window
+namespace ArcadeFrontend
 {
-    private readonly ShellViewModel _shellViewModel;
-    private readonly KeyboardInputMapper _keyboardInputMapper;
-    private readonly InputRouterService _inputRouterService;
-    private readonly InputRepeatService _inputRepeatService;
-    private readonly SettingsService _settingsService;
-    private readonly SoundStateService _soundStateService;
-    private readonly AudioCueService _audioCueService;
-    private readonly RevealMediaService _revealMediaService;
-    private readonly MediaPlayer _ambientMusicPlayer = new();
-
-    public MainWindow()
+    public partial class MainWindow : Window
     {
-        InitializeComponent();
+        private readonly ILoggingService _loggingService;
+        private readonly IAppStartupCoordinator _appStartupCoordinator;
+        private readonly IInputAbstractionService _inputService;
+        private readonly IGameLauncherService _gameLauncherService;
+        private readonly IIdleService _idleService;
+        private readonly IAttractModeCoordinator _attractModeCoordinator;
+        private readonly IDiagnosticsSummaryBuilder _diagnosticsSummaryBuilder;
+        private readonly MainViewModel _mainViewModel;
+        private readonly IInputComboService _inputComboService;
 
-        _keyboardInputMapper = new KeyboardInputMapper();
-        _inputRouterService = new InputRouterService();
-        _inputRepeatService = new InputRepeatService(IsRepeatableKey);
-
-        string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
-
-        var pathService = new PathService();
-        var gameDataService = new GameDataService(baseDirectory);
-        var recentGamesService = new RecentGamesService(baseDirectory);
-        var libraryService = new LibraryService(gameDataService);
-        var recentSessionService = new RecentSessionService(recentGamesService);
-        var favoritesService = new FavoritesService(gameDataService);
-        var adminUnlockService = new AdminUnlockService(new[] { Key.Up, Key.Up, Key.Down, Key.Down, Key.Enter });
-        var adminStateService = new AdminStateService(adminUnlockService);
-        _settingsService = new SettingsService(baseDirectory);
-        var loggingService = new LoggingService();
-        var adminDiagnosticsService = new AdminDiagnosticsService(loggingService, _settingsService);
-        var visualStateService = new VisualStateService(pathService);
-        var uiStateStoreService = new UiStateStoreService(baseDirectory);
-        _soundStateService = new SoundStateService(pathService);
-        _audioCueService = new AudioCueService();
-        _revealMediaService = new RevealMediaService(pathService);
-        var launchGuardService = new LaunchGuardService();
-        var revealSequenceService = new SecretSequenceService(new[] { Key.Up, Key.Up, Key.Down, Key.Down, Key.Enter });
-
-        AppSettings settings = _settingsService.LoadSettings();
-        _inputRepeatService.Configure(settings.InputRepeatInitialDelayMs, settings.InputRepeatIntervalMs);
-
-        var attractModeService = new AttractModeService(TimeSpan.FromSeconds(settings.AttractModeTimeoutSeconds));
-        var idleStateService = new IdleStateService(attractModeService);
-        var navigationStateService = new NavigationStateService();
-        var gameLauncherService = new GameLauncherService(pathService);
-        var launchFlowService = new LaunchFlowService(
-            gameLauncherService,
-            libraryService,
-            recentSessionService,
-            _settingsService);
-
-        var mainWindowViewModel = new MainWindowViewModel(
-            libraryService,
-            launchFlowService,
-            navigationStateService,
-            recentSessionService,
-            favoritesService,
-            adminStateService,
-            idleStateService,
-            new MenuDefinitionService(),
-            pathService,
-            _settingsService,
-            loggingService,
-            adminDiagnosticsService,
-            visualStateService,
-            uiStateStoreService,
-            _soundStateService,
-            _audioCueService,
-            launchGuardService,
-            revealSequenceService);
-
-        _shellViewModel = new ShellViewModel(mainWindowViewModel);
-        DataContext = _shellViewModel.Main;
-        _shellViewModel.Main.PropertyChanged += MainViewModel_PropertyChanged;
-        _ambientMusicPlayer.MediaEnded += AmbientMusicPlayer_MediaEnded;
-    }
-
-    private void Window_Loaded(object sender, RoutedEventArgs e)
-    {
-        Focus();
-        _shellViewModel.Main.Initialize();
-        RefreshMediaPlayback();
-        RefreshAmbientMusic();
-        TryPlayPendingSound();
-    }
-
-    private void Window_KeyDown(object sender, KeyEventArgs e)
-    {
-        ProcessKey(e.Key);
-        _inputRepeatService.HandleKeyDown(e.Key, key => Dispatcher.Invoke(() => ProcessKey(key)));
-        e.Handled = true;
-    }
-
-    private void Window_KeyUp(object sender, KeyEventArgs e)
-    {
-        _inputRepeatService.HandleKeyUp(e.Key);
-    }
-
-    private void Window_Closing(object sender, CancelEventArgs e)
-    {
-        _inputRepeatService.Stop();
-        StopAttractVideo();
-        StopAmbientMusic();
-    }
-
-    private void AttractVideoPlayer_MediaEnded(object sender, RoutedEventArgs e)
-    {
-        AppSettings settings = _settingsService.LoadSettings();
-        if (settings.LoopAttractVideo)
+        public MainWindow(
+            ILoggingService loggingService,
+            IPathService pathService,
+            IGameDataService gameDataService,
+            IStartupValidationService startupValidationService,
+            IAppStartupCoordinator appStartupCoordinator,
+            IInputAbstractionService inputService,
+            IGameLauncherService gameLauncherService,
+            INavigationStateService navigationStateService,
+            IIdleService idleService,
+            IAttractModeCoordinator attractModeCoordinator,
+            IDiagnosticsSummaryBuilder diagnosticsSummaryBuilder,
+            MainViewModel mainViewModel,
+            IInputComboService inputComboService)
         {
-            AttractVideoPlayer.Position = TimeSpan.Zero;
-            AttractVideoPlayer.Play();
-        }
-    }
+            _loggingService = loggingService ?? throw new ArgumentNullException(nameof(loggingService));
+            _appStartupCoordinator = appStartupCoordinator ?? throw new ArgumentNullException(nameof(appStartupCoordinator));
+            _inputService = inputService ?? throw new ArgumentNullException(nameof(inputService));
+            _gameLauncherService = gameLauncherService ?? throw new ArgumentNullException(nameof(gameLauncherService));
+            _idleService = idleService ?? throw new ArgumentNullException(nameof(idleService));
+            _attractModeCoordinator = attractModeCoordinator ?? throw new ArgumentNullException(nameof(attractModeCoordinator));
+            _diagnosticsSummaryBuilder = diagnosticsSummaryBuilder ?? throw new ArgumentNullException(nameof(diagnosticsSummaryBuilder));
+            _mainViewModel = mainViewModel ?? throw new ArgumentNullException(nameof(mainViewModel));
+            _inputComboService = inputComboService ?? throw new ArgumentNullException(nameof(inputComboService));
 
-    private void AttractVideoPlayer_MediaFailed(object sender, ExceptionRoutedEventArgs e)
-    {
-        StopAttractVideo();
-    }
+            InitializeComponent();
+            DataContext = _mainViewModel;
+            Loaded += OnLoaded;
+            KeyDown += OnKeyDown;
+            Closing += OnClosing;
 
-    private void AmbientMusicPlayer_MediaEnded(object? sender, EventArgs e)
-    {
-        try
-        {
-            _ambientMusicPlayer.Position = TimeSpan.Zero;
-            _ambientMusicPlayer.Play();
-        }
-        catch
-        {
-        }
-    }
-
-    private void MainViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(MainWindowViewModel.ShowAttractVideo) ||
-            e.PropertyName == nameof(MainWindowViewModel.AttractVideoPath))
-            RefreshMediaPlayback();
-
-        if (e.PropertyName == nameof(MainWindowViewModel.PendingSoundEffect))
-            TryPlayPendingSound();
-
-        if (e.PropertyName == nameof(MainWindowViewModel.SoundState))
-            RefreshAmbientMusic();
-
-        if (e.PropertyName == nameof(MainWindowViewModel.RevealRequested))
-            TryConsumeReveal();
-    }
-
-    private void ProcessKey(Key key)
-    {
-        AppAction action = _keyboardInputMapper.Map(key);
-        bool handled = _inputRouterService.Route(action, _shellViewModel, out string? errorMessage);
-
-        if (!handled)
-            handled = _shellViewModel.Main.HandleKey(key, out errorMessage);
-
-        if (!string.IsNullOrWhiteSpace(errorMessage))
-            MessageBox.Show(errorMessage, "Launch Error", MessageBoxButton.OK, MessageBoxImage.Error);
-
-        if (_shellViewModel.Main.ShouldExit)
-        {
-            _shellViewModel.Main.ClearExitRequest();
-            Close();
-            return;
+            ConfigureInputBindings();
+            ConfigureIdleService();
+            ConfigureInputCombos();
+            WireComboPipeline();
         }
 
-        if (handled)
-        {
-            RefreshMediaPlayback();
-            RefreshAmbientMusic();
-            TryPlayPendingSound();
-            TryConsumeReveal();
-        }
-    }
-
-    private void TryConsumeReveal()
-    {
-        if (!_shellViewModel.Main.ConsumeRevealRequested())
-            return;
-
-        AppSettings settings = _settingsService.LoadSettings();
-        string revealVideoPath = _revealMediaService.ResolveRevealVideoPath(settings.RevealVideoPath);
-
-        if (string.IsNullOrWhiteSpace(revealVideoPath))
-        {
-            MessageBox.Show(
-                "Reveal sequence detected, but the reveal video file was not found.",
-                "Hidden Reveal",
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning);
-            return;
-        }
-
-        try
-        {
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = revealVideoPath,
-                UseShellExecute = true
-            });
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(
-                $"Reveal video launch failed. {ex.Message}",
-                "Hidden Reveal",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
-        }
-    }
-
-    private static bool IsRepeatableKey(Key key)
-    {
-        return key == Key.Up || key == Key.Down || key == Key.Left || key == Key.Right;
-    }
-
-    private void RefreshMediaPlayback()
-    {
-        if (_shellViewModel.Main.ShowAttractVideo &&
-            !string.IsNullOrWhiteSpace(_shellViewModel.Main.AttractVideoPath))
+        private void OnLoaded(object sender, RoutedEventArgs e)
         {
             try
             {
-                AttractVideoPlayer.Source = new Uri(_shellViewModel.Main.AttractVideoPath, UriKind.Absolute);
-                AttractVideoPlayer.Position = TimeSpan.Zero;
-                AttractVideoPlayer.Play();
+                _attractModeCoordinator.Initialize();
+                _idleService.Start();
+
+                var startupResult = _appStartupCoordinator.Initialize();
+                if (!startupResult.IsSuccess || startupResult.Data == null)
+                {
+                    var summary = _diagnosticsSummaryBuilder.BuildOperationFailureSummary("Startup Initialization", startupResult);
+                    MessageBox.Show(summary, "Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    _mainViewModel.Initialize(null, Array.Empty<EmulatorProfile>());
+                    return;
+                }
+
+                var startupData = startupResult.Data;
+                _mainViewModel.Initialize(startupData.GameData, startupData.EmulatorProfiles);
+
+                if (!startupData.CanContinue)
+                {
+                    MessageBox.Show(_diagnosticsSummaryBuilder.BuildStartupSummary(startupData), "Startup Diagnostics", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
             }
-            catch
+            catch (Exception ex)
             {
-                StopAttractVideo();
+                MessageBox.Show(ex.ToString(), "Fatal Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
-        else
+
+        private void ConfigureInputBindings()
         {
-            StopAttractVideo();
+            _inputService.RegisterKeyBinding(Key.Up, InputAction.Up);
+            _inputService.RegisterKeyBinding(Key.Down, InputAction.Down);
+            _inputService.RegisterKeyBinding(Key.Left, InputAction.Left);
+            _inputService.RegisterKeyBinding(Key.Right, InputAction.Right);
+            _inputService.RegisterKeyBinding(Key.Enter, InputAction.Select);
+            _inputService.RegisterKeyBinding(Key.Space, InputAction.Start);
+            _inputService.RegisterKeyBinding(Key.Escape, InputAction.Back);
+            _inputService.RegisterKeyBinding(Key.Back, InputAction.Exit);
+            _inputService.RegisterKeyBinding(Key.F1, InputAction.Admin);
         }
-    }
 
-    private void RefreshAmbientMusic()
-    {
-        SoundStateSnapshot state = _shellViewModel.Main.SoundState;
-        if (!state.EnableAmbientMusic || string.IsNullOrWhiteSpace(state.AmbientMusicPath))
+        private void ConfigureIdleService()
         {
-            StopAmbientMusic();
-            return;
+            _idleService.Configure(new IdleServiceOptions
+            {
+                AttractModeDelay = TimeSpan.FromMinutes(5),
+                HeartbeatInterval = TimeSpan.FromSeconds(1),
+                AutoEnterAttractMode = true,
+                StartInAttractMode = false
+            });
         }
 
-        try
+        private void ConfigureInputCombos()
         {
-            Uri source = new Uri(state.AmbientMusicPath, UriKind.Absolute);
-            if (_ambientMusicPlayer.Source == null || _ambientMusicPlayer.Source != source)
-                _ambientMusicPlayer.Open(source);
-
-            _ambientMusicPlayer.Volume = state.MasterVolume * state.AmbientMusicVolume;
-            _ambientMusicPlayer.Play();
+            _inputComboService.RegisterCombos(new List<InputComboDefinition>
+            {
+                new InputComboDefinition { Key = "admin-open", DisplayName = "Admin Diagnostics", Sequence = new[] { InputAction.Up, InputAction.Up, InputAction.Down, InputAction.Down, InputAction.Select }, MaxGapBetweenInputs = TimeSpan.FromSeconds(2), IsEnabled = true },
+                new InputComboDefinition { Key = "reveal-video", DisplayName = "Reveal Video Trigger", Sequence = new[] { InputAction.Left, InputAction.Right, InputAction.Left, InputAction.Right, InputAction.Start }, MaxGapBetweenInputs = TimeSpan.FromSeconds(2), IsEnabled = true },
+                new InputComboDefinition { Key = "toggle-attract", DisplayName = "Toggle Attract Mode", Sequence = new[] { InputAction.Back, InputAction.Back, InputAction.Start }, MaxGapBetweenInputs = TimeSpan.FromSeconds(2), IsEnabled = true }
+            });
         }
-        catch
+
+        private void WireComboPipeline()
         {
-            StopAmbientMusic();
+            _inputService.InputReceived += HandleInputForCombos;
+            _inputComboService.ComboMatched += HandleComboMatched;
         }
-    }
 
-    private void TryPlayPendingSound()
-    {
-        SoundEffectType effect = _shellViewModel.Main.ConsumePendingSoundEffect();
-        if (effect == SoundEffectType.None) return;
-
-        SoundStateSnapshot state = _shellViewModel.Main.SoundState;
-        if (!state.EnableMenuSounds) return;
-
-        string path = effect switch
+        private void HandleInputForCombos(object? sender, InputEvent e)
         {
-            SoundEffectType.MenuMove => state.MenuMoveSoundPath,
-            SoundEffectType.MenuSelect => state.MenuSelectSoundPath,
-            SoundEffectType.MenuBack => state.MenuBackSoundPath,
-            SoundEffectType.Launch => state.LaunchSoundPath,
-            _ => string.Empty
-        };
-
-        if (string.IsNullOrWhiteSpace(path)) return;
-
-        try
-        {
-            MediaPlayer player = new MediaPlayer();
-            player.Open(new Uri(path, UriKind.Absolute));
-            player.Volume = state.MasterVolume * state.MenuSoundVolume;
-            player.Play();
+            _inputComboService.ProcessInput(e);
         }
-        catch
-        {
-        }
-    }
 
-    private void StopAttractVideo()
-    {
-        try
+        private void HandleComboMatched(object? sender, InputComboMatchEventArgs e)
         {
-            AttractVideoPlayer.Stop();
-            AttractVideoPlayer.Source = null;
+            Dispatcher.Invoke(() =>
+            {
+                switch (e.ComboKey)
+                {
+                    case "admin-open":
+                        _inputService.RegisterExternalInput(InputAction.Admin, "ComboService");
+                        break;
+                    case "reveal-video":
+                        MessageBox.Show("Reveal combo detected. Wire this to your actual video-launch flow when you integrate media playback.", "Reveal Trigger", MessageBoxButton.OK, MessageBoxImage.Information);
+                        break;
+                    case "toggle-attract":
+                        if (_attractModeCoordinator.IsAttractModeActive) _attractModeCoordinator.ForceExitAttractMode("Toggle attract combo");
+                        else _attractModeCoordinator.ForceEnterAttractMode("Toggle attract combo");
+                        break;
+                }
+            });
         }
-        catch
-        {
-        }
-    }
 
-    private void StopAmbientMusic()
-    {
-        try
+        private void OnKeyDown(object sender, KeyEventArgs e)
         {
-            _ambientMusicPlayer.Stop();
-            _ambientMusicPlayer.Close();
+            _inputService.HandleKeyDown(e.Key);
+            e.Handled = true;
         }
-        catch
+
+        private void OnClosing(object? sender, CancelEventArgs e)
         {
+            try
+            {
+                _inputService.InputReceived -= HandleInputForCombos;
+                _inputComboService.ComboMatched -= HandleComboMatched;
+                _idleService.Stop();
+                _attractModeCoordinator.Shutdown();
+                _mainViewModel.Dispose();
+
+                if (_gameLauncherService.GetTrackedProcess() != null)
+                    _gameLauncherService.TerminateTrackedProcess();
+
+                _idleService.Dispose();
+            }
+            catch { }
         }
     }
 }
