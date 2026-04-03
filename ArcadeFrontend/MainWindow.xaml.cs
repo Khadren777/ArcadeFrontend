@@ -1,107 +1,278 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Input;
 using ArcadeFrontend.Models;
 using ArcadeFrontend.Services;
-using ArcadeFrontend.Services.Input;
-using ArcadeFrontend.Services.Launching;
-using ArcadeFrontend.Services.Library;
-using ArcadeFrontend.Services.Navigation;
-using ArcadeFrontend.Services.Sessions;
-using ArcadeFrontend.Services.State;
-using ArcadeFrontend.ViewModels;
 
-/// <summary>
-/// Main application window.
-/// </summary>
-namespace ArcadeFrontend;
-
-public partial class MainWindow : Window
+namespace ArcadeFrontend
 {
-    private readonly ShellViewModel _shellViewModel;
-    private readonly KeyboardInputMapper _keyboardInputMapper;
-    private readonly InputRouterService _inputRouterService;
-
-    public MainWindow()
+    public partial class MainWindow : Window
     {
-        InitializeComponent();
+        private readonly ILoggingService _loggingService;
+        private readonly IPathService _pathService;
+        private readonly IAppStartupCoordinator _appStartupCoordinator;
+        private readonly IInputAbstractionService _inputService;
+        private readonly GameLauncherService _gameLauncherService;
+        private readonly IIdleService _idleService;
+        private readonly IAttractModeCoordinator _attractModeCoordinator;
+        private readonly IDiagnosticsSummaryBuilder _diagnosticsSummaryBuilder;
+        private readonly MainViewModel _mainViewModel;
+        private readonly IInputComboService _inputComboService;
+        private readonly IAppSettingsService _appSettingsService;
+        private readonly RevealMediaService _revealMediaService;
 
-        _keyboardInputMapper = new KeyboardInputMapper();
-        _inputRouterService = new InputRouterService();
-
-        string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
-
-        var pathService = new PathService();
-        var gameDataService = new GameDataService(baseDirectory);
-        var recentGamesService = new RecentGamesService(baseDirectory);
-        var libraryService = new LibraryService(gameDataService);
-        var recentSessionService = new RecentSessionService(recentGamesService);
-        var favoritesService = new FavoritesService(gameDataService);
-        var adminUnlockService = new AdminUnlockService(new[] { Key.Up, Key.Up, Key.Down, Key.Down, Key.Enter });
-        var adminStateService = new AdminStateService(adminUnlockService);
-        var settingsService = new SettingsService(baseDirectory);
-        var loggingService = new LoggingService();
-        var adminDiagnosticsService = new AdminDiagnosticsService(loggingService, settingsService);
-
-        AppSettings settings = settingsService.LoadSettings();
-        var attractModeService = new AttractModeService(TimeSpan.FromSeconds(settings.AttractModeTimeoutSeconds));
-        var idleStateService = new IdleStateService(attractModeService);
-        var navigationStateService = new NavigationStateService();
-        var gameLauncherService = new GameLauncherService(pathService);
-        var launchFlowService = new LaunchFlowService(gameLauncherService, libraryService, recentSessionService);
-
-        var mainWindowViewModel = new MainWindowViewModel(
-            libraryService,
-            launchFlowService,
-            navigationStateService,
-            recentSessionService,
-            favoritesService,
-            adminStateService,
-            idleStateService,
-            new MenuDefinitionService(),
-            pathService,
-            settingsService,
-            loggingService,
-            adminDiagnosticsService);
-
-        _shellViewModel = new ShellViewModel(mainWindowViewModel);
-        DataContext = _shellViewModel.Main;
-    }
-
-    private void Window_Loaded(object sender, RoutedEventArgs e)
-    {
-        Focus();
-        _shellViewModel.Main.Initialize();
-    }
-
-    private void Window_KeyDown(object sender, KeyEventArgs e)
-    {
-        AppAction action = _keyboardInputMapper.Map(e.Key);
-        bool handled = _inputRouterService.Route(action, _shellViewModel, out string? errorMessage);
-
-        if (!handled)
+        public MainWindow(
+            ILoggingService loggingService,
+            IPathService pathService,
+            IGameDataService gameDataService,
+            IStartupValidationService startupValidationService,
+            IAppStartupCoordinator appStartupCoordinator,
+            IInputAbstractionService inputService,
+            IGameLauncherService gameLauncherService,
+            INavigationStateService navigationStateService,
+            IIdleService idleService,
+            IAttractModeCoordinator attractModeCoordinator,
+            IDiagnosticsSummaryBuilder diagnosticsSummaryBuilder,
+            MainViewModel mainViewModel,
+            IInputComboService inputComboService,
+            IAppSettingsService appSettingsService,
+            RevealMediaService revealMediaService)
         {
-            handled = _shellViewModel.Main.HandleKey(e.Key, out errorMessage);
+            _loggingService = loggingService ?? throw new ArgumentNullException(nameof(loggingService));
+            _pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
+            _appStartupCoordinator = appStartupCoordinator ?? throw new ArgumentNullException(nameof(appStartupCoordinator));
+            _inputService = inputService ?? throw new ArgumentNullException(nameof(inputService));
+            _gameLauncherService = gameLauncherService ?? throw new ArgumentNullException(nameof(gameLauncherService));
+            _idleService = idleService ?? throw new ArgumentNullException(nameof(idleService));
+            _attractModeCoordinator = attractModeCoordinator ?? throw new ArgumentNullException(nameof(attractModeCoordinator));
+            _diagnosticsSummaryBuilder = diagnosticsSummaryBuilder ?? throw new ArgumentNullException(nameof(diagnosticsSummaryBuilder));
+            _mainViewModel = mainViewModel ?? throw new ArgumentNullException(nameof(mainViewModel));
+            _inputComboService = inputComboService ?? throw new ArgumentNullException(nameof(inputComboService));
+            _appSettingsService = appSettingsService ?? throw new ArgumentNullException(nameof(appSettingsService));
+            _revealMediaService = revealMediaService ?? throw new ArgumentNullException(nameof(revealMediaService));
+
+            InitializeComponent();
+
+            DataContext = _mainViewModel;
+
+            Loaded += OnLoaded;
+            KeyDown += OnKeyDown;
+            Closing += OnClosing;
+
+            ConfigureInputBindings();
+            ConfigureIdleService();
+            ConfigureInputCombos();
+            WireComboPipeline();
         }
 
-        if (!string.IsNullOrWhiteSpace(errorMessage))
+        private void OnLoaded(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show(
-                errorMessage,
-                "Launch Error",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
+            try
+            {
+                _loggingService.Info(nameof(MainWindow), "Main window loaded. Startup initialization beginning.");
+                _attractModeCoordinator.Initialize();
+                _idleService.Start();
+
+                var startupResult = _appStartupCoordinator.Initialize();
+                if (!startupResult.IsSuccess || startupResult.Data == null)
+                {
+                    var summary = _diagnosticsSummaryBuilder.BuildOperationFailureSummary("Startup Initialization", startupResult);
+                    _loggingService.Error(nameof(MainWindow), "Startup initialization failed.", details: summary);
+                    MessageBox.Show(summary, "Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    _mainViewModel.Initialize(null, Array.Empty<EmulatorProfile>());
+                    return;
+                }
+
+                var startupData = startupResult.Data;
+                _mainViewModel.Initialize(startupData.GameData, startupData.EmulatorProfiles);
+
+                if (!startupData.CanContinue)
+                {
+                    MessageBox.Show(_diagnosticsSummaryBuilder.BuildStartupSummary(startupData), "Startup Diagnostics", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+            }
+            catch (Exception ex)
+            {
+                _loggingService.Critical(nameof(MainWindow), "Unhandled exception during window load.", ex, ex.Message);
+                MessageBox.Show(ex.ToString(), "Fatal Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
-        if (_shellViewModel.Main.ShouldExit)
+        private void ConfigureInputBindings()
         {
-            _shellViewModel.Main.ClearExitRequest();
-            Close();
-            return;
+            _inputService.RegisterKeyBinding(Key.Up, InputAction.Up);
+            _inputService.RegisterKeyBinding(Key.Down, InputAction.Down);
+            _inputService.RegisterKeyBinding(Key.Left, InputAction.Left);
+            _inputService.RegisterKeyBinding(Key.Right, InputAction.Right);
+            _inputService.RegisterKeyBinding(Key.Enter, InputAction.Select);
+            _inputService.RegisterKeyBinding(Key.Space, InputAction.Start);
+            _inputService.RegisterKeyBinding(Key.Escape, InputAction.Back);
+            _inputService.RegisterKeyBinding(Key.Back, InputAction.Exit);
+            _inputService.RegisterKeyBinding(Key.F1, InputAction.Admin);
         }
 
-        if (handled)
+        private void ConfigureIdleService()
         {
-            e.Handled = true;
+            _idleService.Configure(new IdleServiceOptions
+            {
+                AttractModeDelay = TimeSpan.FromMinutes(5),
+                HeartbeatInterval = TimeSpan.FromSeconds(1),
+                AutoEnterAttractMode = true,
+                StartInAttractMode = false
+            });
+        }
+
+        private void ConfigureInputCombos()
+        {
+            _inputComboService.RegisterCombos(new List<InputComboDefinition>
+            {
+                new InputComboDefinition
+                {
+                    Key = "admin-open",
+                    DisplayName = "Admin Diagnostics",
+                    Sequence = new[] { InputAction.Up, InputAction.Up, InputAction.Down, InputAction.Down, InputAction.Select },
+                    MaxGapBetweenInputs = TimeSpan.FromSeconds(2),
+                    IsEnabled = true
+                },
+                new InputComboDefinition
+                {
+                    Key = "reveal-video",
+                    DisplayName = "Reveal Video Trigger",
+                    Sequence = new[] { InputAction.Left, InputAction.Right, InputAction.Left, InputAction.Right, InputAction.Start },
+                    MaxGapBetweenInputs = TimeSpan.FromSeconds(2),
+                    IsEnabled = true
+                },
+                new InputComboDefinition
+                {
+                    Key = "toggle-attract",
+                    DisplayName = "Toggle Attract Mode",
+                    Sequence = new[] { InputAction.Back, InputAction.Back, InputAction.Start },
+                    MaxGapBetweenInputs = TimeSpan.FromSeconds(2),
+                    IsEnabled = true
+                },
+                new InputComboDefinition
+                {
+                    Key = "open-logs",
+                    DisplayName = "Open Logs Folder",
+                    Sequence = new[] { InputAction.Admin, InputAction.Admin, InputAction.Back },
+                    MaxGapBetweenInputs = TimeSpan.FromSeconds(2),
+                    IsEnabled = true
+                }
+            });
+        }
+
+        private void WireComboPipeline()
+        {
+            _inputService.InputReceived += HandleInputForCombos;
+            _inputComboService.ComboMatched += HandleComboMatched;
+        }
+
+        private void HandleInputForCombos(object? sender, InputEvent e)
+        {
+            try
+            {
+                _inputComboService.ProcessInput(e);
+            }
+            catch (Exception ex)
+            {
+                _loggingService.Error(nameof(MainWindow), "Unhandled exception while processing combo input.", ex, $"Action: {e.Action}");
+            }
+        }
+
+        private void HandleComboMatched(object? sender, InputComboMatchEventArgs e)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                _loggingService.Info(nameof(MainWindow), "Combo matched.", $"Key: {e.ComboKey}");
+
+                switch (e.ComboKey)
+                {
+                    case "admin-open":
+                        _inputService.RegisterExternalInput(InputAction.Admin, "ComboService");
+                        break;
+
+                    case "reveal-video":
+                        var settings = _appSettingsService.Current;
+                        var launched = _revealMediaService.TryLaunchRevealMedia(settings.RevealVideoPath);
+                        if (!launched)
+                        {
+                            MessageBox.Show("Reveal combo detected, but no reveal video path was configured or found.", "Reveal Trigger", MessageBoxButton.OK, MessageBoxImage.Information);
+                        }
+                        break;
+
+                    case "toggle-attract":
+                        if (_attractModeCoordinator.IsAttractModeActive)
+                        {
+                            _attractModeCoordinator.ForceExitAttractMode("Toggle attract combo");
+                        }
+                        else
+                        {
+                            _attractModeCoordinator.ForceEnterAttractMode("Toggle attract combo");
+                        }
+                        break;
+
+                    case "open-logs":
+                        OpenLogsFolder();
+                        break;
+                }
+            });
+        }
+
+        private void OpenLogsFolder()
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "explorer.exe",
+                    Arguments = _loggingService.GetLogDirectoryPath(),
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                _loggingService.Error(nameof(MainWindow), "Failed to open logs folder.", ex, _loggingService.GetLogDirectoryPath());
+            }
+        }
+
+        private void OnKeyDown(object sender, KeyEventArgs e)
+        {
+            try
+            {
+                _inputService.HandleKeyDown(e.Key);
+                e.Handled = true;
+            }
+            catch (Exception ex)
+            {
+                _loggingService.Error(nameof(MainWindow), "Unhandled exception while processing key input.", ex, $"Key: {e.Key}");
+            }
+        }
+
+        private void OnClosing(object? sender, CancelEventArgs e)
+        {
+            try
+            {
+                _inputService.InputReceived -= HandleInputForCombos;
+                _inputComboService.ComboMatched -= HandleComboMatched;
+                _idleService.Stop();
+                _attractModeCoordinator.Shutdown();
+                _mainViewModel.Dispose();
+
+                if (_gameLauncherService.GetTrackedProcess() != null)
+                {
+                    var terminateResult = _gameLauncherService.TerminateTrackedProcess();
+                    _loggingService.Info(nameof(MainWindow), "Tracked process termination attempted during shutdown.", terminateResult.UserMessage);
+                }
+
+                _idleService.Dispose();
+            }
+            catch (Exception ex)
+            {
+                _loggingService.Error(nameof(MainWindow), "Unhandled exception during window closing.", ex, ex.Message);
+            }
         }
     }
 }
