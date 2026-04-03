@@ -1,17 +1,16 @@
 [
   {
-    "Title": "X-Men",
-    "System": "Arcade",
-    "LaunchType": "Emulator",
-    "EmulatorKey": "mame",
-    "RomPath": "Games\\Arcade\\xmen.zip"
-  },
-  {
-    "Title": "Diablo II",
-    "System": "PC Games",
-    "LaunchType": "Native",
-    "LaunchTarget": "Games\\PC\\Diablo2\\Diablo II.exe",
-    "WorkingDirectory": "Games\\PC\\Diablo2",
-    "IsHidden": true
+    "games": [
+      {
+        "id": "test_notepad",
+        "title": "Notepad Test",
+        "platform": "PC Games",
+        "launchTarget": "notepad",
+        "executablePathOverride": "C:\\Windows\\System32\\notepad.exe",
+        "isEnabled": true,
+        "isHidden": false,
+        "description": "Frontend launch test"
+      }
+    ]
   }
 ]
