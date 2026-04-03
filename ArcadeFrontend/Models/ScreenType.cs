@@ -1,14 +1,14 @@
-﻿namespace ArcadeFrontend.Models
+namespace ArcadeFrontend.Models
 {
     public enum ScreenType
     {
-        MainMenu,
-        SystemsMenu,
-        GamesMenu,
-        HiddenGamesMenu,
-        AdminMenu,
-        RecentGamesMenu,
-        FavoritesMenu,
-        AttractMode
+        Unknown = 0,
+        MainMenu = 1,
+        AdminDiagnostics = 2,
+        GameRunning = 3,
+        AttractMode = 4,
+        Reveal = 5,
+        Settings = 6,
+        Error = 7
     }
 }

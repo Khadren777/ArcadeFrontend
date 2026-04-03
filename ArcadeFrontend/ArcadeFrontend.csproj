@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -9,19 +9,27 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="Config\emulators.json" />
-    <None Remove="Config\games.json" />
-    <None Remove="Config\recentgames.json" />
+    <None Remove="config\emulators.json" />
+    <None Remove="config\emulatorProfiles.json" />
+    <None Remove="config\games.json" />
+    <None Remove="config\recentgames.json" />
+    <None Remove="config\appsettings.json" />
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Config\emulators.json">
+    <Content Include="config\emulators.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="Config\games.json">
+    <Content Include="config\emulatorProfiles.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="Config\recentgames.json">
+    <Content Include="config\games.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="config\recentgames.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="config\appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
