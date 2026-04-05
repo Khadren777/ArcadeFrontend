@@ -5,7 +5,7 @@ using System.Windows.Threading;
 /// <summary>
 /// Provides hardware-style input repeat behavior for directional navigation.
 /// </summary>
-namespace ArcadeFrontend.Services.Input;
+namespace ArcadeFrontend.Services;
 
 public sealed class InputRepeatService
 {

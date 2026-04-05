@@ -4,11 +4,17 @@ namespace ArcadeFrontend.Models
     {
         Unknown = 0,
         MainMenu = 1,
-        AdminDiagnostics = 2,
-        GameRunning = 3,
-        AttractMode = 4,
-        Reveal = 5,
-        Settings = 6,
-        Error = 7
+        GamesMenu = 2,
+        SystemsMenu = 3,
+        FavoritesMenu = 4,
+        RecentGamesMenu = 5,
+        HiddenGamesMenu = 6,
+        AdminMenu = 7,
+        AdminDiagnostics = 8,
+        GameRunning = 9,
+        AttractMode = 10,
+        Reveal = 11,
+        Settings = 12,
+        Error = 13
     }
 }

@@ -23,6 +23,7 @@ namespace ArcadeFrontend.Services
         string GetAssetPath(string relativePath);
         string GetDataPath(string relativePath);
         string GetConfigPath(string relativePath);
+        string GetAppSettingsPath();
         OperationResult EnsureDirectoryStructure();
     }
 
@@ -76,6 +77,8 @@ namespace ArcadeFrontend.Services
         {
             return Path.Combine(ConfigDirectory, "games.json");
         }
+
+        public string GetAppSettingsPath() => Path.Combine(ConfigDirectory, "appsettings.json");
 
         public string GetEmulatorProfilesPath()
         {

@@ -30,6 +30,8 @@ namespace ArcadeFrontend.Services
     {
         string LogDirectoryPath { get; }
         string CurrentLogFilePath { get; }
+        string GetLogDirectoryPath();
+        IReadOnlyList<LogEntry> Entries { get; }
         void Debug(string source, string message, string? details = null);
         void Info(string source, string message, string? details = null);
         void Warning(string source, string message, string? details = null);
@@ -58,7 +60,19 @@ namespace ArcadeFrontend.Services
         public void Warning(string source, string message, string? details = null) => Write(LogLevel.Warning, source, message, details, null);
         public void Error(string source, string message, Exception? exception = null, string? details = null) => Write(LogLevel.Error, source, message, details, exception);
         public void Critical(string source, string message, Exception? exception = null, string? details = null) => Write(LogLevel.Critical, source, message, details, exception);
+        
+        public string GetLogDirectoryPath() => LogDirectoryPath;
 
+        public IReadOnlyList<LogEntry> Entries
+        {
+            get
+            {
+                lock (_syncLock)
+                {
+                    return _recentEntries.ToList().AsReadOnly();
+                }
+            }
+        }
         public IReadOnlyList<LogEntry> GetRecentEntries(int maxCount = 200)
         {
             lock (_syncLock) return _recentEntries.TakeLast(Math.Max(1, maxCount)).ToList().AsReadOnly();
