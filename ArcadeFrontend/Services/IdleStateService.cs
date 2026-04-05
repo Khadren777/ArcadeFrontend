@@ -1,7 +1,7 @@
 /// <summary>
 /// Owns idle tracking and attract mode entry / exit state.
 /// </summary>
-namespace ArcadeFrontend.Services.State;
+namespace ArcadeFrontend.Services;
 
 public sealed class IdleStateService
 {

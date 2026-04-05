@@ -37,7 +37,7 @@ namespace ArcadeFrontend.Services
     public sealed class IdleService : IIdleService
     {
         private readonly ILoggingService _loggingService;
-        private Timer? _timer;
+        private System.Timers.Timer? _timer;
         private IdleServiceOptions _options = new();
         public bool IsRunning { get; private set; }
         public bool IsInAttractMode { get; private set; }
@@ -55,7 +55,7 @@ namespace ArcadeFrontend.Services
             if (IsRunning) return;
             LastActivityUtc = DateTime.UtcNow;
             IsInAttractMode = _options.StartInAttractMode;
-            _timer = new Timer(_options.HeartbeatInterval.TotalMilliseconds) { AutoReset = true, Enabled = true };
+            _timer = new System.Timers.Timer(_options.HeartbeatInterval.TotalMilliseconds);
             _timer.Elapsed += (_, __) =>
             {
                 if (_options.AutoEnterAttractMode && !IsInAttractMode && IdleDuration >= _options.AttractModeDelay) EnterAttractMode("Configured idle delay elapsed");

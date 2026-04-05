@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Windows;
 using ArcadeFrontend.Services;
+using ArcadeFrontend.ViewModels;
 
 namespace ArcadeFrontend
 {
