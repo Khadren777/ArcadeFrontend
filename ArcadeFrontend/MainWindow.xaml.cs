@@ -6,7 +6,6 @@ using System.Windows;
 using System.Windows.Input;
 using ArcadeFrontend.Models;
 using ArcadeFrontend.Services;
-using ArcadeFrontend.ViewModels;
 
 namespace ArcadeFrontend
 {
@@ -16,7 +15,7 @@ namespace ArcadeFrontend
         private readonly IPathService _pathService;
         private readonly IAppStartupCoordinator _appStartupCoordinator;
         private readonly IInputAbstractionService _inputService;
-        private readonly IGameLauncherService _gameLauncherService;
+        private readonly GameLauncherService _gameLauncherService;
         private readonly IIdleService _idleService;
         private readonly IAttractModeCoordinator _attractModeCoordinator;
         private readonly IDiagnosticsSummaryBuilder _diagnosticsSummaryBuilder;

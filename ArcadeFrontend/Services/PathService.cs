@@ -19,11 +19,13 @@ namespace ArcadeFrontend.Services
 
         string GetGamesConfigPath();
         string GetEmulatorProfilesPath();
+        string GetLegacyEmulatorsPath();
+        string GetRecentGamesPath();
+        string GetAppSettingsPath();
         string GetLogFilePath(DateTime? utcDate = null);
         string GetAssetPath(string relativePath);
         string GetDataPath(string relativePath);
         string GetConfigPath(string relativePath);
-        string GetAppSettingsPath();
         OperationResult EnsureDirectoryStructure();
     }
 
@@ -48,42 +50,21 @@ namespace ArcadeFrontend.Services
             _loggingService = loggingService;
 
             DataDirectory = Path.Combine(AppRootPath, "Data");
-            ConfigDirectory = Path.Combine(AppRootPath, "Config");
+            ConfigDirectory = Path.Combine(AppRootPath, "config");
             LogsDirectory = Path.Combine(AppRootPath, "Logs");
             AssetsDirectory = Path.Combine(AppRootPath, "Assets");
         }
 
-        public string Resolve(params string[] segments)
-        {
-            return CombineValidatedPath(AppRootPath, segments, nameof(segments));
-        }
+        public string Resolve(params string[] segments) => CombineValidatedPath(AppRootPath, segments, nameof(segments));
+        public string ResolveInAssets(params string[] segments) => CombineValidatedPath(AssetsDirectory, segments, nameof(segments));
+        public string ResolveInConfig(params string[] segments) => CombineValidatedPath(ConfigDirectory, segments, nameof(segments));
+        public string ResolveInData(params string[] segments) => CombineValidatedPath(DataDirectory, segments, nameof(segments));
 
-        public string ResolveInAssets(params string[] segments)
-        {
-            return CombineValidatedPath(AssetsDirectory, segments, nameof(segments));
-        }
-
-        public string ResolveInConfig(params string[] segments)
-        {
-            return CombineValidatedPath(ConfigDirectory, segments, nameof(segments));
-        }
-
-        public string ResolveInData(params string[] segments)
-        {
-            return CombineValidatedPath(DataDirectory, segments, nameof(segments));
-        }
-
-        public string GetGamesConfigPath()
-        {
-            return Path.Combine(ConfigDirectory, "games.json");
-        }
-
+        public string GetGamesConfigPath() => Path.Combine(ConfigDirectory, "games.json");
+        public string GetEmulatorProfilesPath() => Path.Combine(ConfigDirectory, "emulatorProfiles.json");
+        public string GetLegacyEmulatorsPath() => Path.Combine(ConfigDirectory, "emulators.json");
+        public string GetRecentGamesPath() => Path.Combine(ConfigDirectory, "recentgames.json");
         public string GetAppSettingsPath() => Path.Combine(ConfigDirectory, "appsettings.json");
-
-        public string GetEmulatorProfilesPath()
-        {
-            return Path.Combine(ConfigDirectory, "emulatorProfiles.json");
-        }
 
         public string GetLogFilePath(DateTime? utcDate = null)
         {
@@ -91,20 +72,9 @@ namespace ArcadeFrontend.Services
             return Path.Combine(LogsDirectory, $"arcade-{date}.log");
         }
 
-        public string GetAssetPath(string relativePath)
-        {
-            return CombineValidatedPath(AssetsDirectory, new[] { relativePath }, nameof(relativePath));
-        }
-
-        public string GetDataPath(string relativePath)
-        {
-            return CombineValidatedPath(DataDirectory, new[] { relativePath }, nameof(relativePath));
-        }
-
-        public string GetConfigPath(string relativePath)
-        {
-            return CombineValidatedPath(ConfigDirectory, new[] { relativePath }, nameof(relativePath));
-        }
+        public string GetAssetPath(string relativePath) => CombineValidatedPath(AssetsDirectory, new[] { relativePath }, nameof(relativePath));
+        public string GetDataPath(string relativePath) => CombineValidatedPath(DataDirectory, new[] { relativePath }, nameof(relativePath));
+        public string GetConfigPath(string relativePath) => CombineValidatedPath(ConfigDirectory, new[] { relativePath }, nameof(relativePath));
 
         public OperationResult EnsureDirectoryStructure()
         {
