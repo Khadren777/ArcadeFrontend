@@ -22,8 +22,10 @@ namespace ArcadeFrontend.ViewModels
         private readonly ILoggingService _loggingService;
         private readonly IDiagnosticsSummaryBuilder _diagnosticsSummaryBuilder;
         private readonly ObservableCollection<GameDefinition> _games = new();
+        private readonly ObservableCollection<string> _mainMenuItems = new();
 
         private int _selectedIndex;
+        private int _selectedMenuIndex;
         private string _statusMessage = "Ready";
         private string _currentScreen = "MainMenu";
         private string _diagnosticsText = string.Empty;
@@ -35,6 +37,8 @@ namespace ArcadeFrontend.ViewModels
         public event PropertyChangedEventHandler? PropertyChanged;
 
         public ReadOnlyObservableCollection<GameDefinition> Games { get; }
+        public ReadOnlyObservableCollection<string> MainMenuItems { get; }
+
         public ICommand LaunchSelectedGameCommand { get; }
         public ICommand BackCommand { get; }
         public ICommand RefreshDiagnosticsCommand { get; }
@@ -62,9 +66,36 @@ namespace ArcadeFrontend.ViewModels
             }
         }
 
+        public int SelectedMenuIndex
+        {
+            get => _selectedMenuIndex;
+            set
+            {
+                if (_selectedMenuIndex == value)
+                {
+                    return;
+                }
+
+                if (value < 0 || value >= _mainMenuItems.Count)
+                {
+                    return;
+                }
+
+                _selectedMenuIndex = value;
+                StatusMessage = $"Selected: {SelectedMenuItem}";
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(SelectedMenuItem));
+            }
+        }
+
         public GameDefinition? SelectedGame =>
             _selectedIndex >= 0 && _selectedIndex < _games.Count
                 ? _games[_selectedIndex]
+                : null;
+
+        public string? SelectedMenuItem =>
+            _selectedMenuIndex >= 0 && _selectedMenuIndex < _mainMenuItems.Count
+                ? _mainMenuItems[_selectedMenuIndex]
                 : null;
 
         public string StatusMessage
@@ -94,8 +125,17 @@ namespace ArcadeFrontend.ViewModels
 
                 _currentScreen = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(MainMenuVisibility));
+                OnPropertyChanged(nameof(GamesVisibility));
+                OnPropertyChanged(nameof(LeftPanelTitle));
+                OnPropertyChanged(nameof(RightPanelTitle));
             }
         }
+
+        public string MainMenuVisibility => CurrentScreen == "MainMenu" ? "Visible" : "Collapsed";
+        public string GamesVisibility => CurrentScreen == "GamesMenu" ? "Visible" : "Collapsed";
+        public string LeftPanelTitle => CurrentScreen == "MainMenu" ? "Main Menu" : "Games";
+        public string RightPanelTitle => CurrentScreen == "MainMenu" ? "Selection" : "Selected Game";
 
         public string DiagnosticsText
         {
@@ -175,9 +215,11 @@ namespace ArcadeFrontend.ViewModels
             _diagnosticsSummaryBuilder = diagnosticsSummaryBuilder ?? throw new ArgumentNullException(nameof(diagnosticsSummaryBuilder));
 
             Games = new ReadOnlyObservableCollection<GameDefinition>(_games);
-            LaunchSelectedGameCommand = new RelayCommand(LaunchSelectedGame, CanLaunchSelectedGame);
+            MainMenuItems = new ReadOnlyObservableCollection<string>(_mainMenuItems);
+
+            LaunchSelectedGameCommand = new RelayCommand(HandlePrimaryAction, CanHandlePrimaryAction);
             BackCommand = new RelayCommand(HandleBackAction);
-            RefreshDiagnosticsCommand = new RelayCommand(RefreshDiagnostics);
+            RefreshDiagnosticsCommand = new RelayCommand(OpenDiagnostics);
             ExitCommand = new RelayCommand(ExitApplication);
 
             _inputService.InputReceived += HandleInputReceived;
@@ -189,6 +231,11 @@ namespace ArcadeFrontend.ViewModels
             string initialScreen = "MainMenu")
         {
             _games.Clear();
+            _mainMenuItems.Clear();
+
+            _mainMenuItems.Add("Games");
+            _mainMenuItems.Add("Diagnostics");
+            _mainMenuItems.Add("Exit");
 
             if (gameData?.Games != null)
             {
@@ -202,20 +249,24 @@ namespace ArcadeFrontend.ViewModels
             CurrentScreen = initialScreen;
             _navigationStateService.SetCurrentScreen(initialScreen, "Main view model initialized");
 
+            _selectedMenuIndex = 0;
+            OnPropertyChanged(nameof(SelectedMenuIndex));
+            OnPropertyChanged(nameof(SelectedMenuItem));
+
             if (_games.Count > 0)
             {
                 _selectedIndex = 0;
-                UpdateSelectedGameState("Initial selection");
-                StatusMessage = $"Selected: {SelectedGame?.Title}";
-                EmptyStateMessage = string.Empty;
+                UpdateSelectedGameState("Initial game selection");
+                StatusMessage = $"Selected: {SelectedMenuItem}";
+                EmptyStateMessage = "Choose an option from the main menu.";
             }
             else
             {
-                StatusMessage = "No games available.";
+                StatusMessage = $"Selected: {SelectedMenuItem}";
                 EmptyStateMessage =
                     "No games were loaded.\n\n" +
-                    "Check that config\\games.json exists in the app output folder and contains valid entries.\n\n" +
-                    "You can still use Diagnostics or Exit from this screen.";
+                    "You can still open Diagnostics or Exit from the main menu.\n\n" +
+                    "When ready, add config\\games.json to the app output folder.";
             }
 
             _loggingService.Info(nameof(MainViewModel), "Main view model initialized.", $"Games: {_games.Count} | Screen: {initialScreen}");
@@ -232,38 +283,104 @@ namespace ArcadeFrontend.ViewModels
                 return;
             }
 
-            switch (e.Action)
+            if (CurrentScreen == "MainMenu")
             {
-                case InputAction.Up:
-                    MoveSelection(-1);
-                    break;
-                case InputAction.Down:
-                    MoveSelection(1);
-                    break;
-                case InputAction.Left:
-                    MoveSelection(-1);
-                    break;
-                case InputAction.Right:
-                    MoveSelection(1);
-                    break;
-                case InputAction.Select:
-                case InputAction.Start:
-                    LaunchSelectedGame();
-                    break;
-                case InputAction.Back:
-                case InputAction.Exit:
-                    HandleBackAction();
-                    break;
-                case InputAction.Admin:
-                    RefreshDiagnostics();
-                    break;
+                switch (e.Action)
+                {
+                    case InputAction.Up:
+                    case InputAction.Left:
+                        MoveMenuSelection(-1);
+                        break;
+                    case InputAction.Down:
+                    case InputAction.Right:
+                        MoveMenuSelection(1);
+                        break;
+                    case InputAction.Select:
+                    case InputAction.Start:
+                        ExecuteMainMenuSelection();
+                        break;
+                    case InputAction.Back:
+                    case InputAction.Exit:
+                        ExitApplication();
+                        break;
+                    case InputAction.Admin:
+                        OpenDiagnostics();
+                        break;
+                }
+
+                return;
+            }
+
+            if (CurrentScreen == "GamesMenu")
+            {
+                switch (e.Action)
+                {
+                    case InputAction.Up:
+                    case InputAction.Left:
+                        MoveGameSelection(-1);
+                        break;
+                    case InputAction.Down:
+                    case InputAction.Right:
+                        MoveGameSelection(1);
+                        break;
+                    case InputAction.Select:
+                    case InputAction.Start:
+                        LaunchSelectedGame();
+                        break;
+                    case InputAction.Back:
+                    case InputAction.Exit:
+                        ReturnToMainMenu();
+                        break;
+                    case InputAction.Admin:
+                        OpenDiagnostics();
+                        break;
+                }
+
+                return;
+            }
+
+            if (CurrentScreen == "AdminDiagnostics")
+            {
+                switch (e.Action)
+                {
+                    case InputAction.Back:
+                    case InputAction.Exit:
+                        ReturnToMainMenu();
+                        break;
+                    case InputAction.Admin:
+                        RefreshDiagnostics();
+                        break;
+                }
+
+                return;
             }
         }
 
-        private void MoveSelection(int delta)
+        private void MoveMenuSelection(int delta)
+        {
+            if (_mainMenuItems.Count == 0)
+            {
+                return;
+            }
+
+            var newIndex = _selectedMenuIndex + delta;
+            if (newIndex < 0)
+            {
+                newIndex = _mainMenuItems.Count - 1;
+            }
+            else if (newIndex >= _mainMenuItems.Count)
+            {
+                newIndex = 0;
+            }
+
+            SelectedMenuIndex = newIndex;
+        }
+
+        private void MoveGameSelection(int delta)
         {
             if (_games.Count == 0)
             {
+                StatusMessage = "No games available.";
                 return;
             }
 
@@ -281,9 +398,73 @@ namespace ArcadeFrontend.ViewModels
             StatusMessage = $"Selected: {SelectedGame?.Title}";
         }
 
-        private bool CanLaunchSelectedGame()
+        private bool CanHandlePrimaryAction()
         {
-            return !IsBusy && SelectedGame != null;
+            return !IsBusy;
+        }
+
+        private void HandlePrimaryAction()
+        {
+            if (CurrentScreen == "MainMenu")
+            {
+                ExecuteMainMenuSelection();
+                return;
+            }
+
+            if (CurrentScreen == "GamesMenu")
+            {
+                LaunchSelectedGame();
+                return;
+            }
+
+            if (CurrentScreen == "AdminDiagnostics")
+            {
+                RefreshDiagnostics();
+            }
+        }
+
+        private void ExecuteMainMenuSelection()
+        {
+            switch (SelectedMenuItem)
+            {
+                case "Games":
+                    CurrentScreen = "GamesMenu";
+                    _navigationStateService.SetCurrentScreen(CurrentScreen, "Opened games menu");
+                    StatusMessage = _games.Count > 0
+                        ? $"Selected: {SelectedGame?.Title}"
+                        : "No games available.";
+                    EmptyStateMessage = _games.Count > 0
+                        ? "Choose a game to launch."
+                        : "No games were loaded. Add config\\games.json to the app output folder.";
+                    break;
+
+                case "Diagnostics":
+                    OpenDiagnostics();
+                    break;
+
+                case "Exit":
+                    ExitApplication();
+                    break;
+            }
+        }
+
+        private void OpenDiagnostics()
+        {
+            CurrentScreen = "AdminDiagnostics";
+            _navigationStateService.SetCurrentScreen(CurrentScreen, "Diagnostics opened");
+            RefreshDiagnostics();
+            StatusMessage = "Diagnostics opened.";
+            EmptyStateMessage = "Review startup and navigation details in the diagnostics panel.";
+        }
+
+        private void ReturnToMainMenu()
+        {
+            CurrentScreen = "MainMenu";
+            _navigationStateService.SetCurrentScreen(CurrentScreen, "Returned to main menu");
+            StatusMessage = $"Selected: {SelectedMenuItem}";
+            EmptyStateMessage = _games.Count > 0
+                ? "Choose an option from the main menu."
+                : "No games were loaded. Diagnostics and Exit are still available.";
         }
 
         private void LaunchSelectedGame()
@@ -291,7 +472,7 @@ namespace ArcadeFrontend.ViewModels
             var game = SelectedGame;
             if (game == null)
             {
-                StatusMessage = _games.Count == 0 ? "No game selected because no games are loaded." : "No game selected.";
+                StatusMessage = "No game selected.";
                 return;
             }
 
@@ -336,19 +517,14 @@ namespace ArcadeFrontend.ViewModels
             {
                 var terminateResult = _gameLauncherService.TerminateTrackedProcess();
                 DiagnosticsText = _diagnosticsSummaryBuilder.BuildOperationFailureSummary("Terminate Game Process", terminateResult);
-
-                var restoreResult = _navigationStateService.PopReturnPoint("Returning from game");
-                if (restoreResult.IsSuccess && restoreResult.Data != null)
-                {
-                    ApplySnapshot(restoreResult.Data);
-                }
-                else
-                {
-                    CurrentScreen = "MainMenu";
-                    _navigationStateService.SetCurrentScreen(CurrentScreen, "Fallback after game exit");
-                }
-
+                ReturnToMainMenu();
                 StatusMessage = terminateResult.UserMessage;
+                return;
+            }
+
+            if (CurrentScreen == "GamesMenu" || CurrentScreen == "AdminDiagnostics")
+            {
+                ReturnToMainMenu();
                 return;
             }
 
@@ -374,23 +550,6 @@ namespace ArcadeFrontend.ViewModels
             var selectedGame = SelectedGame;
             _navigationStateService.SetSelectedGame(selectedGame?.Id, _selectedIndex, selectedGame?.Platform, reason);
             RaiseCommandStates();
-        }
-
-        private void ApplySnapshot(NavigationStateSnapshot snapshot)
-        {
-            CurrentScreen = snapshot.CurrentScreen ?? "MainMenu";
-            _navigationStateService.SetCurrentScreen(CurrentScreen, "Snapshot applied to main view model");
-
-            if (!string.IsNullOrWhiteSpace(snapshot.SelectedGameId))
-            {
-                var index = _games.ToList().FindIndex(g => string.Equals(g.Id, snapshot.SelectedGameId, StringComparison.OrdinalIgnoreCase));
-                if (index >= 0)
-                {
-                    _selectedIndex = index;
-                    OnPropertyChanged(nameof(SelectedIndex));
-                    OnPropertyChanged(nameof(SelectedGame));
-                }
-            }
         }
 
         private void RaiseCommandStates()

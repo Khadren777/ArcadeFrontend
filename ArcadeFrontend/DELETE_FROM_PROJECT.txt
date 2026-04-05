@@ -1,2 +1,0 @@
-Remove this file from the project if it still exists:
-- LibraryService.cs
