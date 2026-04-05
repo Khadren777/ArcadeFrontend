@@ -3,7 +3,7 @@ using System.Windows.Input;
 /// <summary>
 /// Owns admin unlock state and unlock sequence tracking.
 /// </summary>
-namespace ArcadeFrontend.Services.State;
+namespace ArcadeFrontend.Services;
 
 public sealed class AdminStateService
 {

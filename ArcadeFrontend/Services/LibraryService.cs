@@ -3,7 +3,7 @@ using ArcadeFrontend.Models;
 /// <summary>
 /// Provides loaded library data for games and emulator profiles.
 /// </summary>
-namespace ArcadeFrontend.Services.Library;
+namespace ArcadeFrontend.Services;
 
 public sealed class LibraryService
 {

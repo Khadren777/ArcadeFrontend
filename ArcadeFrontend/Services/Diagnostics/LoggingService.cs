@@ -3,7 +3,7 @@ using ArcadeFrontend.Models;
 /// <summary>
 /// Stores lightweight in-memory application logs for diagnostics.
 /// </summary>
-namespace ArcadeFrontend.Services;
+namespace ArcadeFrontend.Services.Diagnostics;
 
 public sealed class LoggingService
 {
