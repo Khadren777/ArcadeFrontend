@@ -9,27 +9,27 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="config\emulators.json" />
-    <None Remove="config\emulatorProfiles.json" />
-    <None Remove="config\games.json" />
-    <None Remove="config\recentgames.json" />
-    <None Remove="config\appsettings.json" />
+    <None Remove="Config\emulators.json" />
+    <None Remove="Config\emulatorProfiles.json" />
+    <None Remove="Config\games.json" />
+    <None Remove="Config\recentgames.json" />
+    <None Remove="Config\appsettings.json" />
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="config\emulators.json">
+    <Content Include="Config\emulators.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="config\emulatorProfiles.json">
+    <Content Include="Config\emulatorProfiles.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="config\games.json">
+    <Content Include="Config\games.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="config\recentgames.json">
+    <Content Include="Config\recentgames.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="config\appsettings.json">
+    <Content Include="Config\appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Windows;
 using ArcadeFrontend.Services;
+using ArcadeFrontend.ViewModels;
 
 namespace ArcadeFrontend
 {
@@ -80,6 +81,11 @@ namespace ArcadeFrontend
                 _loggingService!,
                 startupValidationService,
                 gameDataService);
+
+            _loggingService!.Info(
+                nameof(App),
+                "Resolved runtime paths.",
+                $"ConfigDir: {pathService.ConfigDirectory} | Games: {pathService.GetGamesConfigPath()} | EmulatorProfiles: {pathService.GetEmulatorProfilesPath()} | LegacyEmulators: {pathService.GetLegacyEmulatorsPath()} | AppSettings: {pathService.GetAppSettingsPath()} | Logs: {pathService.LogsDirectory}");
 
             appSettingsService.Load();
 

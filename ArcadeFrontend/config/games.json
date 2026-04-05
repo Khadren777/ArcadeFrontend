@@ -1,16 +1,14 @@
-[
-  {
-    "games": [
-      {
-        "id": "test_notepad",
-        "title": "Notepad Test",
-        "platform": "PC Games",
-        "launchTarget": "notepad",
-        "executablePathOverride": "C:\\Windows\\System32\\notepad.exe",
-        "isEnabled": true,
-        "isHidden": false,
-        "description": "Frontend launch test"
-      }
-    ]
-  }
-]
+{
+  "games": [
+    {
+      "id": "test_notepad",
+      "title": "Notepad Test",
+      "platform": "PC",
+      "launchTarget": "notepad",
+      "executablePathOverride": "C:\\Windows\\System32\\notepad.exe",
+      "isEnabled": true,
+      "isHidden": false,
+      "description": "Quick launch pipeline test"
+    }
+  ]
+}

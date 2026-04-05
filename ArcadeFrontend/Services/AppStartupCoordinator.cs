@@ -63,6 +63,12 @@ namespace ArcadeFrontend.Services
 
                 var emulatorProfilesPath = GetExistingEmulatorProfilePath();
                 var gamesConfigPath = _pathService.GetGamesConfigPath();
+                var appSettingsPath = _pathService.GetAppSettingsPath();
+
+                _loggingService.Info(
+                    nameof(AppStartupCoordinator),
+                    "Startup files resolved.",
+                    $"Games: {gamesConfigPath} | EmulatorProfiles: {emulatorProfilesPath} | AppSettings: {appSettingsPath}");
 
                 var emulatorProfiles = LoadEmulatorProfiles(emulatorProfilesPath, statusMessages);
 
@@ -84,7 +90,7 @@ namespace ArcadeFrontend.Services
                     {
                         emulatorProfilesPath,
                         gamesConfigPath,
-                        _pathService.GetAppSettingsPath()
+                        appSettingsPath
                     },
                     EmulatorProfiles = emulatorProfiles
                 });
@@ -110,6 +116,7 @@ namespace ArcadeFrontend.Services
                     if (gameLoadResult.IsSuccess)
                     {
                         gameData = gameLoadResult.Data;
+                        _loggingService.Info(nameof(AppStartupCoordinator), "Game data loaded.", $"GameCount: {gameData?.Games.Count ?? 0}");
                     }
                     else
                     {
@@ -119,6 +126,7 @@ namespace ArcadeFrontend.Services
                 else
                 {
                     statusMessages.Add("Game data file not present yet.");
+                    _loggingService.Warning(nameof(AppStartupCoordinator), "Game data file was not found during startup.", gamesConfigPath);
                 }
 
                 var canContinue = DetermineCanContinue(validationResult.Data, gameData);
@@ -159,8 +167,7 @@ namespace ArcadeFrontend.Services
                 return modern;
             }
 
-            var legacy = _pathService.GetLegacyEmulatorsPath();
-            return legacy;
+            return _pathService.GetLegacyEmulatorsPath();
         }
 
         private List<EmulatorProfile> LoadEmulatorProfiles(string emulatorProfilesPath, ICollection<string> statusMessages)

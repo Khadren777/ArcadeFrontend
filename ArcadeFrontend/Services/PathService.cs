@@ -48,9 +48,8 @@ namespace ArcadeFrontend.Services
 
             AppRootPath = Path.GetFullPath(appRootPath);
             _loggingService = loggingService;
-
             DataDirectory = Path.Combine(AppRootPath, "Data");
-            ConfigDirectory = Path.Combine(AppRootPath, "config");
+            ConfigDirectory = ResolveExistingOrPreferredDirectory(AppRootPath, "Config", "config");
             LogsDirectory = Path.Combine(AppRootPath, "Logs");
             AssetsDirectory = Path.Combine(AppRootPath, "Assets");
         }
@@ -111,6 +110,24 @@ namespace ArcadeFrontend.Services
                     technicalMessage: ex.Message,
                     exception: ex);
             }
+        }
+
+        private static string ResolveExistingOrPreferredDirectory(string root, string preferredName, string fallbackName)
+        {
+            var preferred = Path.Combine(root, preferredName);
+            var fallback = Path.Combine(root, fallbackName);
+
+            if (Directory.Exists(preferred))
+            {
+                return preferred;
+            }
+
+            if (Directory.Exists(fallback))
+            {
+                return fallback;
+            }
+
+            return preferred;
         }
 
         private static string CombineValidatedPath(string baseDirectory, string[] segments, string parameterName)
