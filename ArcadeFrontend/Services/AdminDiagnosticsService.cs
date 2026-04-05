@@ -21,7 +21,7 @@ public sealed class AdminDiagnosticsService
 
     public IReadOnlyList<AppLogEntry> GetRecentLogs()
     {
-        return _loggingService.Entries
+        return _loggingService.GetRecentEntries()
     .Select(x => new AppLogEntry
     {
         TimestampUtc = x.TimestampUtc,
@@ -39,7 +39,7 @@ public sealed class AdminDiagnosticsService
     public string BuildSummary()
     {
         AppSettings settings = _settingsService.LoadSettings();
-        IReadOnlyList<AppLogEntry> logs = _loggingService.Entries
+        IReadOnlyList<AppLogEntry> logs = _loggingService.GetRecentEntries()
     .Select(x => new AppLogEntry
     {
         TimestampUtc = x.TimestampUtc,

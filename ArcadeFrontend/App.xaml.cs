@@ -101,12 +101,9 @@ namespace ArcadeFrontend
             return new MainWindow(
                 loggingService: _loggingService!,
                 pathService: pathService,
-                gameDataService: gameDataService,
-                startupValidationService: startupValidationService,
                 appStartupCoordinator: appStartupCoordinator,
                 inputService: inputService,
                 gameLauncherService: gameLauncherService,
-                navigationStateService: navigationStateService,
                 idleService: idleService,
                 attractModeCoordinator: attractModeCoordinator,
                 diagnosticsSummaryBuilder: diagnosticsSummaryBuilder,
