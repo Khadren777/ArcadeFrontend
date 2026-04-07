@@ -263,7 +263,6 @@ namespace ArcadeFrontend.ViewModels
             _mainMenuItems.Add("Systems");
             _mainMenuItems.Add("Games");
             _mainMenuItems.Add("Diagnostics");
-            _mainMenuItems.Add("Exit");
 
             if (gameData?.Games != null)
             {
@@ -306,6 +305,12 @@ namespace ArcadeFrontend.ViewModels
                 return;
             }
 
+            if (e.Action == InputAction.Back || e.Action == InputAction.Exit)
+            {
+                HandleBackAction();
+                return;
+            }
+
             if (CurrentScreen == "MainMenu")
             {
                 switch (e.Action)
@@ -314,18 +319,17 @@ namespace ArcadeFrontend.ViewModels
                     case InputAction.Left:
                         MoveMenuSelection(-1);
                         break;
+
                     case InputAction.Down:
                     case InputAction.Right:
                         MoveMenuSelection(1);
                         break;
+
                     case InputAction.Select:
                     case InputAction.Start:
                         ExecuteMainMenuSelection();
                         break;
-                    case InputAction.Back:
-                    case InputAction.Exit:
-                        ExitApplication();
-                        break;
+
                     case InputAction.Admin:
                         OpenDiagnostics();
                         break;
@@ -342,18 +346,17 @@ namespace ArcadeFrontend.ViewModels
                     case InputAction.Left:
                         MoveGameSelection(-1);
                         break;
+
                     case InputAction.Down:
                     case InputAction.Right:
                         MoveGameSelection(1);
                         break;
+
                     case InputAction.Select:
                     case InputAction.Start:
                         LaunchSelectedGame();
                         break;
-                    case InputAction.Back:
-                    case InputAction.Exit:
-                        ReturnToMainMenu();
-                        break;
+
                     case InputAction.Admin:
                         OpenDiagnostics();
                         break;
@@ -364,15 +367,9 @@ namespace ArcadeFrontend.ViewModels
 
             if (CurrentScreen == "AdminDiagnostics")
             {
-                switch (e.Action)
+                if (e.Action == InputAction.Admin)
                 {
-                    case InputAction.Back:
-                    case InputAction.Exit:
-                        ReturnToMainMenu();
-                        break;
-                    case InputAction.Admin:
-                        RefreshDiagnostics();
-                        break;
+                    RefreshDiagnostics();
                 }
             }
         }
@@ -447,10 +444,6 @@ namespace ArcadeFrontend.ViewModels
 
                 case "Diagnostics":
                     OpenDiagnostics();
-                    break;
-
-                case "Exit":
-                    ExitApplication();
                     break;
             }
         }

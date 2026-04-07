@@ -52,11 +52,11 @@ namespace ArcadeFrontend
             _appSettingsService = appSettingsService ?? throw new ArgumentNullException(nameof(appSettingsService));
             _revealMediaService = revealMediaService ?? throw new ArgumentNullException(nameof(revealMediaService));
 
-        InitializeComponent();
-        DataContext = _mainViewModel;
-        Loaded += OnLoaded;
-        PreviewKeyDown += OnKeyDown;
-        Closing += OnClosing;
+            InitializeComponent();
+            DataContext = _mainViewModel;
+            Loaded += OnLoaded;
+            PreviewKeyDown += OnKeyDown;
+            Closing += OnClosing;
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)
@@ -93,6 +93,27 @@ namespace ArcadeFrontend
                 MessageBox.Show(ex.ToString(), "Fatal Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+
+
+private void OnSelectClicked(object sender, RoutedEventArgs e)
+{
+    _inputService.RegisterExternalInput(InputAction.Select, "UI");
+}
+
+private void OnBackClicked(object sender, RoutedEventArgs e)
+{
+    _inputService.RegisterExternalInput(InputAction.Back, "UI");
+}
+
+private void OnDiagnosticsClicked(object sender, RoutedEventArgs e)
+{
+    _inputService.RegisterExternalInput(InputAction.Admin, "UI");
+}
+
+private void OnExitClicked(object sender, RoutedEventArgs e)
+{
+    _inputService.RegisterExternalInput(InputAction.Exit, "UI");
+}
 
         private void ConfigureInputBindings()
         {

@@ -16,12 +16,42 @@ namespace ArcadeFrontend.Services
     {
         public string BuildStartupSummary(AppStartupResult startupResult)
         {
-            if (startupResult == null) return "Startup summary unavailable. No startup result was provided.";
+            if (startupResult == null)
+            {
+                return "Startup summary unavailable. No startup result was provided.";
+            }
+
             var builder = new StringBuilder();
             builder.AppendLine(startupResult.CanContinue ? "Startup status: READY" : "Startup status: BLOCKED");
-            foreach (var message in startupResult.StatusMessages) builder.AppendLine($"- {message}");
-            if (startupResult.ValidationReport != null) builder.AppendLine(startupResult.ValidationReport.Summary);
-            if (startupResult.GameData != null) builder.AppendLine($"Game entries loaded: {startupResult.GameData.Games.Count}");
+
+            foreach (var message in startupResult.StatusMessages)
+            {
+                builder.AppendLine($"- {message}");
+            }
+
+            if (startupResult.ValidationReport != null)
+            {
+                builder.AppendLine();
+                builder.AppendLine(startupResult.ValidationReport.Summary);
+
+                foreach (var issue in startupResult.ValidationReport.Issues)
+                {
+                    builder.AppendLine($"- [{issue.Severity}] {issue.Code}: {issue.Message}");
+                }
+            }
+
+            if (startupResult.GameData != null)
+            {
+                builder.AppendLine();
+                builder.AppendLine($"Game entries loaded: {startupResult.GameData.Games.Count}");
+                builder.AppendLine($"Game issues found: {startupResult.GameData.Issues.Count}");
+
+                foreach (var issue in startupResult.GameData.Issues)
+                {
+                    builder.AppendLine($"- [{issue.FailureCategory}] {issue.Code}: {issue.Message}");
+                }
+            }
+
             return builder.ToString().TrimEnd();
         }
 
@@ -32,8 +62,17 @@ namespace ArcadeFrontend.Services
             builder.AppendLine(result.IsSuccess ? "Status: SUCCESS" : "Status: FAILURE");
             builder.AppendLine($"Category: {result.FailureCategory}");
             builder.AppendLine($"Message: {result.UserMessage}");
-            if (!string.IsNullOrWhiteSpace(result.TechnicalMessage)) builder.AppendLine($"Technical detail: {result.TechnicalMessage}");
-            if (result.Exception != null) builder.AppendLine(result.Exception.ToString());
+
+            if (!string.IsNullOrWhiteSpace(result.TechnicalMessage))
+            {
+                builder.AppendLine($"Technical detail: {result.TechnicalMessage}");
+            }
+
+            if (result.Exception != null)
+            {
+                builder.AppendLine(result.Exception.ToString());
+            }
+
             return builder.ToString().TrimEnd();
         }
 
@@ -44,8 +83,17 @@ namespace ArcadeFrontend.Services
             builder.AppendLine($"Game: {result.GameTitle}");
             builder.AppendLine($"Target: {result.LaunchTarget}");
             builder.AppendLine($"Message: {result.UserMessage}");
-            if (!string.IsNullOrWhiteSpace(result.ExecutablePath)) builder.AppendLine($"Executable: {result.ExecutablePath}");
-            if (!string.IsNullOrWhiteSpace(result.TechnicalMessage)) builder.AppendLine($"Technical detail: {result.TechnicalMessage}");
+
+            if (!string.IsNullOrWhiteSpace(result.ExecutablePath))
+            {
+                builder.AppendLine($"Executable: {result.ExecutablePath}");
+            }
+
+            if (!string.IsNullOrWhiteSpace(result.TechnicalMessage))
+            {
+                builder.AppendLine($"Technical detail: {result.TechnicalMessage}");
+            }
+
             return builder.ToString().TrimEnd();
         }
     }

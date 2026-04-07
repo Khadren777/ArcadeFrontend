@@ -71,6 +71,10 @@ namespace ArcadeFrontend.Services
                     $"Games: {gamesConfigPath} | EmulatorProfiles: {emulatorProfilesPath} | AppSettings: {appSettingsPath}");
 
                 var emulatorProfiles = LoadEmulatorProfiles(emulatorProfilesPath, statusMessages);
+                if (emulatorProfiles.Count == 0)
+                {
+                    statusMessages.Add("No emulator profiles were loaded. Emulator-backed games will not launch until Config/emulatorProfiles.json is configured.");
+                }
 
                 var validationResult = _startupValidationService.Validate(new StartupValidationOptions
                 {
@@ -106,6 +110,13 @@ namespace ArcadeFrontend.Services
                 }
 
                 statusMessages.Add(validationResult.Data?.Summary ?? "Startup validation completed.");
+                if (validationResult.Data != null && validationResult.Data.Issues.Count > 0)
+                {
+                    foreach (var issue in validationResult.Data.Issues.Take(10))
+                    {
+                        statusMessages.Add($"{issue.Code}: {issue.Message}");
+                    }
+                }
 
                 GameDataLoadResult? gameData = null;
                 if (File.Exists(gamesConfigPath))
@@ -117,6 +128,14 @@ namespace ArcadeFrontend.Services
                     {
                         gameData = gameLoadResult.Data;
                         _loggingService.Info(nameof(AppStartupCoordinator), "Game data loaded.", $"GameCount: {gameData?.Games.Count ?? 0}");
+                    }
+                    if (gameData != null && gameData.Issues.Count > 0)
+                    {
+                        statusMessages.Add($"Game data issues found: {gameData.Issues.Count}");
+                        foreach (var issue in gameData.Issues.Take(10))
+                        {
+                            statusMessages.Add($"{issue.Code}: {issue.Message}");
+                        }
                     }
                     else
                     {
