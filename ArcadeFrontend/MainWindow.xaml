@@ -18,7 +18,9 @@
             <RowDefinition Height="180"/>
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Background="#1E1E1E" Padding="20,16">
+        <Border Grid.Row="0"
+                Background="#1E1E1E"
+                Padding="20,16">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -26,7 +28,9 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Orientation="Vertical">
-                    <TextBlock Text="Arcade Frontend" FontSize="30" FontWeight="Bold"/>
+                    <TextBlock Text="Arcade Frontend"
+                            FontSize="30"
+                            FontWeight="Bold"/>
                     <TextBlock Text="{Binding CurrentScreen, StringFormat=Screen: {0}}"
                                FontSize="14"
                                Opacity="0.8"
@@ -38,12 +42,14 @@
                         Padding="14,8"
                         CornerRadius="6"
                         VerticalAlignment="Center">
-                    <TextBlock Text="{Binding StatusMessage}" FontSize="14"/>
+                    <TextBlock Text="{Binding StatusMessage}"
+                            FontSize="14"/>
                 </Border>
             </Grid>
         </Border>
 
-        <Grid Grid.Row="1" Margin="20">
+        <Grid Grid.Row="1"
+                Margin="20">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="2.2*"/>
                 <ColumnDefinition Width="1.3*"/>
@@ -61,7 +67,10 @@
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <TextBlock Text="{Binding LeftPanelTitle}" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,12"/>
+                    <TextBlock Text="{Binding LeftPanelTitle}"
+                            FontSize="22"
+                            FontWeight="SemiBold"
+                            Margin="0,0,0,12"/>
 
                     <Border Grid.Row="1"
                             Background="#202020"
@@ -84,8 +93,13 @@
                              Visibility="{Binding MainMenuVisibility}">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <Border Padding="14,12" Margin="0,0,0,10" Background="#252526" CornerRadius="8">
-                                    <TextBlock Text="{Binding}" FontWeight="SemiBold" FontSize="22"/>
+                                <Border Padding="14,12"
+                                        Margin="0,0,0,10"
+                                        Background="#252526"
+                                        CornerRadius="8">
+                                    <TextBlock Text="{Binding}"
+                                            FontWeight="SemiBold"
+                                            FontSize="22"/>
                                 </Border>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
@@ -102,11 +116,23 @@
                              ScrollViewer.VerticalScrollBarVisibility="Auto">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <Border Padding="12,10" Margin="0,0,0,8" Background="#252526" CornerRadius="8">
+                                <Border Padding="12,10"
+                                        Margin="0,0,0,8"
+                                        Background="#252526"
+                                        CornerRadius="8">
                                     <StackPanel>
-                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="18"/>
-                                        <TextBlock Text="{Binding Platform}" FontSize="13" Opacity="0.75" Margin="0,4,0,0"/>
-                                        <TextBlock Text="{Binding Description}" FontSize="12" Opacity="0.65" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                        <TextBlock Text="{Binding Title}"
+                                                FontWeight="SemiBold"
+                                                FontSize="18"/>
+                                        <TextBlock Text="{Binding Platform}"
+                                                FontSize="13"
+                                                Opacity="0.75"
+                                                Margin="0,4,0,0"/>
+                                        <TextBlock Text="{Binding Description}"
+                                                FontSize="12"
+                                                Opacity="0.65"
+                                                TextWrapping="Wrap"
+                                                Margin="0,4,0,0"/>
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>
@@ -122,46 +148,68 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <Border Background="#1A1A1A" CornerRadius="10" Padding="16" Margin="0,0,0,16">
+                <Border Background="#1A1A1A"
+                        CornerRadius="10"
+                        Padding="16"
+                        Margin="0,0,0,16">
                     <StackPanel>
-                        <TextBlock Text="{Binding RightPanelTitle}" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,12"/>
-                        <TextBlock Text="{Binding RightPanelHeadline}" FontSize="22" FontWeight="Bold"/>
-                        <TextBlock Text="{Binding RightPanelSubheadline}" FontSize="14" Opacity="0.75" Margin="0,6,0,0"/>
-                        <TextBlock Text="{Binding RightPanelBody}" TextWrapping="Wrap" Opacity="0.7" Margin="0,10,0,0"/>
+                        <TextBlock Text="{Binding RightPanelTitle}"
+                                FontSize="20"
+                                FontWeight="SemiBold"
+                                Margin="0,0,0,12"/>
+                        <TextBlock Text="{Binding RightPanelHeadline}"
+                                FontSize="22"
+                                FontWeight="Bold"/>
+                        <TextBlock Text="{Binding RightPanelSubheadline}"
+                                FontSize="14"
+                                Opacity="0.75"
+                                Margin="0,6,0,0"/>
+                        <TextBlock Text="{Binding RightPanelBody}"
+                                TextWrapping="Wrap"
+                                Opacity="0.7"
+                                Margin="0,10,0,0"/>
                     </StackPanel>
                 </Border>
 
-                <WrapPanel Grid.Row="1" Margin="0,0,0,16">
+                <WrapPanel Grid.Row="1"
+                        Margin="0,0,0,16">
                     <Button Content="Select / Launch"
-                            Command="{Binding LaunchSelectedGameCommand}"
+                            Command="{Binding HandlePrimaryActionCommand}"
                             Padding="18,10"
                             Margin="0,0,12,0"
                             FontSize="16"/>
                     <Button Content="Back"
-                            Command="{Binding BackCommand}"
+                            Command="{Binding HandleBackActionCommand}"
                             Padding="18,10"
                             Margin="0,0,12,0"
                             FontSize="16"/>
                     <Button Content="Diagnostics"
-                            Command="{Binding RefreshDiagnosticsCommand}"
+                            Command="{Binding OpenDiagnosticsCommand}"
                             Padding="18,10"
                             Margin="0,0,12,0"
                             FontSize="16"/>
                     <Button Content="Exit"
-                            Command="{Binding ExitCommand}"
+                            Command="{Binding ExitApplicationCommand}"
                             Padding="18,10"
                             FontSize="16"/>
                 </WrapPanel>
 
-                <Border Grid.Row="2" Background="#1A1A1A" CornerRadius="10" Padding="16">
+                <Border Grid.Row="2"
+                        Background="#1A1A1A"
+                        CornerRadius="10"
+                        Padding="16">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
 
-                        <TextBlock Text="Diagnostics" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,12"/>
-                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <TextBlock Text="Diagnostics"
+                                FontSize="20"
+                                FontWeight="SemiBold"
+                                Margin="0,0,0,12"/>
+                        <ScrollViewer Grid.Row="1"
+                                VerticalScrollBarVisibility="Auto">
                             <TextBlock Text="{Binding DiagnosticsText}"
                                        TextWrapping="Wrap"
                                        FontFamily="Consolas"
@@ -173,7 +221,9 @@
             </Grid>
         </Grid>
 
-        <Border Grid.Row="2" Background="#161616" Padding="20,12">
+        <Border Grid.Row="2"
+                Background="#161616"
+                Padding="20,12">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -181,7 +231,9 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Orientation="Vertical">
-                    <TextBlock Text="Controls" FontWeight="SemiBold" FontSize="15"/>
+                    <TextBlock Text="Controls"
+                            FontWeight="SemiBold"
+                            FontSize="15"/>
                     <TextBlock Text="Up/Down: Navigate   Select/Start: Confirm   Back: Return   F1/Admin: Diagnostics   Exit button: Close app"
                                FontSize="13"
                                Opacity="0.7"
