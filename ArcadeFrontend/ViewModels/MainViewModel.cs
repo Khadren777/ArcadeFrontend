@@ -164,7 +164,13 @@ namespace ArcadeFrontend.ViewModels
                 return;
             }
 
-            ExitApplication();
+            if (CurrentScreen == "MainMenu")
+            {
+                StatusMessage = "Already at main menu.";
+                return;
+            }
+
+            ReturnToMainMenu();
         }
 
         [RelayCommand]
