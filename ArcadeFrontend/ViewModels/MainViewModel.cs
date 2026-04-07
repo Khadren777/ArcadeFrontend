@@ -119,7 +119,6 @@ namespace ArcadeFrontend.ViewModels
                         ? "Open the full games list and launch from the current library."
                         : "No games are loaded yet. Once games.json is wired correctly, this option becomes the main library browser.",
                     "Diagnostics" => "Open the diagnostics view and inspect startup, navigation, and launch state.",
-                    "Exit" => "Close the frontend cleanly.",
                     _ => "Choose an option from the main menu."
                 };
             }
@@ -288,7 +287,7 @@ namespace ArcadeFrontend.ViewModels
             else
             {
                 StatusMessage = $"Selected: {SelectedMenuItem}";
-                EmptyStateMessage = "No games were loaded - Diagnostics and Exit are still available - When ready, add Config/games.json to the app output folder.";
+                EmptyStateMessage = "No games were loaded - Diagnostics is still available - When ready, add Config/games.json to the app output folder.";
             }
 
             _loggingService.Info(nameof(MainViewModel), "Main view model initialized.", $"Games: {_games.Count} | Screen: {initialScreen}");
@@ -333,6 +332,11 @@ namespace ArcadeFrontend.ViewModels
                     case InputAction.Admin:
                         OpenDiagnostics();
                         break;
+
+                    case InputAction.Back:
+                    case InputAction.Exit:
+                        HandleBackAction();
+                        break;
                 }
 
                 return;
@@ -360,18 +364,29 @@ namespace ArcadeFrontend.ViewModels
                     case InputAction.Admin:
                         OpenDiagnostics();
                         break;
+
+                    case InputAction.Back:
+                    case InputAction.Exit:
+                        HandleBackAction();
+                        break;
                 }
 
                 return;
             }
 
             if (CurrentScreen == "AdminDiagnostics")
-            {
-                if (e.Action == InputAction.Admin)
+                switch (e.Action)
                 {
-                    RefreshDiagnostics();
+                    case InputAction.Back:
+                        HandleBackAction();
+                        break;
+                    case InputAction.Exit:
+                        ExitApplication();
+                        break;
+                    case InputAction.Admin:
+                        RefreshDiagnostics();
+                        break;
                 }
-            }
         }
 
         private void MoveMenuSelection(int delta)
@@ -438,8 +453,8 @@ namespace ArcadeFrontend.ViewModels
                         ? $"Selected: {SelectedGame?.Title}"
                         : "No games available.";
                     EmptyStateMessage = _games.Count > 0
-                        ? "Choose a game to launch."
-                        : "No games were loaded. Add Config/games.json to the app output folder.";
+                        ? "Choose an option from the main menu."
+                        : "No games were loaded. Diagnostics is still available.";
                     break;
 
                 case "Diagnostics":
