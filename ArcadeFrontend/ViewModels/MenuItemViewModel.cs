@@ -1,71 +1,23 @@
-﻿using System.ComponentModel;
-using System.Runtime.CompilerServices;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using ArcadeFrontend.Models;
 
 namespace ArcadeFrontend.ViewModels
 {
-    public class MenuItemViewModel : INotifyPropertyChanged
+    public partial class MenuItemViewModel : ObservableObject
     {
-        private bool _isSelected;
+        [ObservableProperty]
+        private bool isSelected;
+
+        [ObservableProperty]
+        private bool isLaunchAvailable = true;
+
+        [ObservableProperty]
+        private string launchIssue = string.Empty;
 
         public string Label { get; set; } = string.Empty;
         public MenuAction Action { get; set; } = MenuAction.None;
         public string Value { get; set; } = string.Empty;
         public Game? Game { get; set; }
-
-        public bool IsSelected
-        {
-            get => _isSelected;
-            set
-            {
-                if (_isSelected == value)
-                {
-                    return;
-                }
-
-                _isSelected = value;
-                OnPropertyChanged();
-            }
-        }
-        private bool _isLaunchAvailable = true;
-        private string _launchIssue = string.Empty;
-
-        public bool IsLaunchAvailable
-        {
-            get => _isLaunchAvailable;
-            set
-            {
-                if (_isLaunchAvailable == value)
-                {
-                    return;
-                }
-
-                _isLaunchAvailable = value;
-                OnPropertyChanged();
-            }
-        }
-
-        public string LaunchIssue
-        {
-            get => _launchIssue;
-            set
-            {
-                if (_launchIssue == value)
-                {
-                    return;
-                }
-
-                _launchIssue = value;
-                OnPropertyChanged();
-            }
-        }
-
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
 
         public static MenuItemViewModel FromModel(MenuItemModel model)
         {

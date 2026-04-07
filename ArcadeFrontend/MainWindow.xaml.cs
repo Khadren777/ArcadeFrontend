@@ -55,7 +55,7 @@ namespace ArcadeFrontend
         InitializeComponent();
         DataContext = _mainViewModel;
         Loaded += OnLoaded;
-        KeyDown += OnKeyDown;
+        PreviewKeyDown += OnKeyDown;
         Closing += OnClosing;
         }
 

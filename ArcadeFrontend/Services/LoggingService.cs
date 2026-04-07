@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using Serilog;
+using Serilog.Events;
+using Serilog.Sinks.File;
 
 namespace ArcadeFrontend.Services
 {
@@ -67,6 +70,7 @@ namespace ArcadeFrontend.Services
         private readonly object _syncLock = new();
         private readonly List<LogEntry> _recentEntries = new();
         private readonly int _maxInMemoryEntries;
+        private readonly ILogger _serilogLogger;
 
         public string LogDirectoryPath { get; }
         public string CurrentLogFilePath { get; }
@@ -79,11 +83,21 @@ namespace ArcadeFrontend.Services
             }
 
             _maxInMemoryEntries = Math.Max(100, maxInMemoryEntries);
-
             LogDirectoryPath = Path.Combine(applicationRootPath, "Logs");
             Directory.CreateDirectory(LogDirectoryPath);
 
             CurrentLogFilePath = Path.Combine(LogDirectoryPath, $"arcade-{DateTime.UtcNow:yyyyMMdd}.log");
+
+            // Configure Serilog with file sink and structured logging
+            _serilogLogger = new LoggerConfiguration()
+                .MinimumLevel.Debug()
+                .WriteTo.File(
+                    CurrentLogFilePath,
+                    outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff} {Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}",
+                    rollingInterval: RollingInterval.Day,
+                    retainedFileCountLimit: 30)
+                .Enrich.WithProperty("Application", "ArcadeFrontend")
+                .CreateLogger();
 
             Info(nameof(LoggingService), "Logging service initialized.", $"Log file: {CurrentLogFilePath}");
         }
@@ -162,19 +176,27 @@ namespace ArcadeFrontend.Services
                     _recentEntries.RemoveRange(0, _recentEntries.Count - _maxInMemoryEntries);
                 }
 
-                AppendToFile(entry);
+                // Log to Serilog
+                var serilogLevel = MapToSerilogLevel(level);
+                _serilogLogger
+                    .ForContext("Source", source)
+                    .Write(
+                        serilogLevel,
+                        exception,
+                        "{Message} {Details}",
+                        message,
+                        details ?? "");
             }
         }
 
-        private void AppendToFile(LogEntry entry)
+        private static LogEventLevel MapToSerilogLevel(LogLevel level) => level switch
         {
-            try
-            {
-                File.AppendAllText(CurrentLogFilePath, entry.ToDetailedBlock() + Environment.NewLine);
-            }
-            catch
-            {
-            }
-        }
+            LogLevel.Debug => LogEventLevel.Debug,
+            LogLevel.Info => LogEventLevel.Information,
+            LogLevel.Warning => LogEventLevel.Warning,
+            LogLevel.Error => LogEventLevel.Error,
+            LogLevel.Critical => LogEventLevel.Fatal,
+            _ => LogEventLevel.Information
+        };
     }
 }

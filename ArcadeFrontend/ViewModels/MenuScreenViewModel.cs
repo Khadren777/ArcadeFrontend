@@ -1,10 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace ArcadeFrontend.ViewModels
+﻿namespace ArcadeFrontend.ViewModels
 {
-    internal class MenuScreenViewModel
+    internal class MenuScreenViewModel : ViewModelBase
     {
     }
 }
+
