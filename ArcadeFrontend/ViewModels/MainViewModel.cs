@@ -23,6 +23,7 @@ namespace ArcadeFrontend.ViewModels
         private readonly IDiagnosticsSummaryBuilder _diagnosticsSummaryBuilder;
         private readonly ObservableCollection<GameDefinition> _games = [];
         private readonly ObservableCollection<string> _mainMenuItems = [];
+        private readonly ObservableCollection<string> _diagnosticsMenuItems = [];
         private bool _hasCompletedInitialization;
 
         [ObservableProperty]
@@ -30,6 +31,9 @@ namespace ArcadeFrontend.ViewModels
 
         [ObservableProperty]
         private int selectedMenuIndex;
+
+        [ObservableProperty]
+        private int selectedDiagnosticsIndex;
 
         [ObservableProperty]
         private string statusMessage = "Ready";
@@ -54,6 +58,7 @@ namespace ArcadeFrontend.ViewModels
 
         public ReadOnlyObservableCollection<GameDefinition> Games { get; }
         public ReadOnlyObservableCollection<string> MainMenuItems { get; }
+        public ReadOnlyObservableCollection<string> DiagnosticsMenuItems { get; }
 
         public GameDefinition? SelectedGame =>
             SelectedIndex >= 0 && SelectedIndex < _games.Count
@@ -61,13 +66,26 @@ namespace ArcadeFrontend.ViewModels
                 : null;
 
         public string? SelectedMenuItem =>
-            SelectedMenuIndex >= 0 && SelectedMenuIndex < _mainMenuItems.Count
-                ? _mainMenuItems[SelectedMenuIndex]
+    SelectedMenuIndex >= 0 && SelectedMenuIndex < _mainMenuItems.Count
+        ? _mainMenuItems[SelectedMenuIndex]
+        : null;
+
+        public string? SelectedDiagnosticsItem =>
+            SelectedDiagnosticsIndex >= 0 && SelectedDiagnosticsIndex < _diagnosticsMenuItems.Count
+                ? _diagnosticsMenuItems[SelectedDiagnosticsIndex]
                 : null;
 
         public string MainMenuVisibility => CurrentScreen == "MainMenu" ? "Visible" : "Collapsed";
         public string GamesVisibility => CurrentScreen == "GamesMenu" ? "Visible" : "Collapsed";
-        public string LeftPanelTitle => CurrentScreen == "MainMenu" ? "Main Menu" : "Games";
+        public string DiagnosticsVisibility => CurrentScreen == "AdminDiagnostics" ? "Visible" : "Collapsed";
+
+        public string LeftPanelTitle => CurrentScreen switch
+        {
+            "MainMenu" => "Main Menu",
+            "GamesMenu" => "Games",
+            "AdminDiagnostics" => "Diagnostics",
+            _ => "Menu"
+        };
         public string RightPanelTitle => CurrentScreen == "AdminDiagnostics" ? "Diagnostics Focus" : "Selection";
 
         public string RightPanelHeadline
@@ -77,6 +95,11 @@ namespace ArcadeFrontend.ViewModels
                 if (CurrentScreen == "GamesMenu")
                 {
                     return SelectedGame?.Title ?? "No Game Selected";
+                }
+
+                if (CurrentScreen == "AdminDiagnostics")
+                {
+                    return SelectedDiagnosticsItem ?? "Diagnostics";
                 }
 
                 return SelectedMenuItem ?? "Main Menu";
@@ -114,12 +137,23 @@ namespace ArcadeFrontend.ViewModels
                         : SelectedGame.Description;
                 }
 
+                if (CurrentScreen == "AdminDiagnostics")
+                {
+                    return SelectedDiagnosticsItem switch
+                    {
+                        "Rescan Library" => "Scan the configured ROM folders and rebuild the generated game catalog.",
+                        "Refresh Diagnostics" => "Refresh the diagnostics panel without changing the catalog.",
+                        "Exit Application" => "Close the frontend cleanly.",
+                        _ => "Choose an admin action."
+                    };
+                }
+
                 return SelectedMenuItem switch
                 {
                     "Systems" => "Reserved for the future systems browser. This is the next logical expansion point after content hookup is proven.",
                     "Games" => _games.Count > 0
                         ? "Open the full games list and launch from the current library."
-                        : "No games are loaded yet. Once games.json is wired correctly, this option becomes the main library browser.",
+                        : "No games are loaded yet. Once the library scanner is configured correctly, this option becomes the main library browser.",
                     "Diagnostics" => "Open the diagnostics view and inspect startup, navigation, and launch state.",
                     _ => "Choose an option from the main menu."
                 };
@@ -143,7 +177,7 @@ namespace ArcadeFrontend.ViewModels
 
             if (CurrentScreen == "AdminDiagnostics")
             {
-                RefreshDiagnostics();
+                ExecuteDiagnosticsSelection();
             }
         }
 
@@ -181,7 +215,7 @@ namespace ArcadeFrontend.ViewModels
             _navigationStateService.SetCurrentScreen(CurrentScreen, "Diagnostics opened");
             RefreshDiagnostics();
             StatusMessage = "Diagnostics opened.";
-            EmptyStateMessage = "Review startup and navigation details in the diagnostics panel.";
+            EmptyStateMessage = "Diagnostics mode active. Press Admin to rescan the library or Back to return.";
         }
 
         [RelayCommand]
@@ -217,8 +251,13 @@ namespace ArcadeFrontend.ViewModels
             _gameDataService = gameDataService ?? throw new ArgumentNullException(nameof(gameDataService));
             _libraryScannerService = libraryScannerService ?? throw new ArgumentNullException(nameof(libraryScannerService));
             _navigationStateService = navigationStateService ?? throw new ArgumentNullException(nameof(navigationStateService));
+            _attractModeCoordinator = attractModeCoordinator ?? throw new ArgumentNullException(nameof(attractModeCoordinator));
+            _loggingService = loggingService ?? throw new ArgumentNullException(nameof(loggingService));
+            _diagnosticsSummaryBuilder = diagnosticsSummaryBuilder ?? throw new ArgumentNullException(nameof(diagnosticsSummaryBuilder));
+
             Games = new ReadOnlyObservableCollection<GameDefinition>(_games);
             MainMenuItems = new ReadOnlyObservableCollection<string>(_mainMenuItems);
+            DiagnosticsMenuItems = new ReadOnlyObservableCollection<string>(_diagnosticsMenuItems);
 
             _inputService.InputReceived += HandleInputReceived;
         }
@@ -257,6 +296,23 @@ namespace ArcadeFrontend.ViewModels
             RefreshRightPanel();
         }
 
+        partial void OnSelectedDiagnosticsIndexChanged(int oldValue, int newValue)
+        {
+            if (!_hasCompletedInitialization)
+            {
+                return;
+            }
+
+            if (newValue < 0 || newValue >= _diagnosticsMenuItems.Count)
+            {
+                SelectedDiagnosticsIndex = oldValue;
+                return;
+            }
+
+            StatusMessage = $"Selected: {SelectedDiagnosticsItem ?? "Diagnostics"}";
+            RefreshRightPanel();
+        }
+
         partial void OnCurrentScreenChanged(string oldValue, string newValue)
         {
             if (!_hasCompletedInitialization)
@@ -280,10 +336,15 @@ namespace ArcadeFrontend.ViewModels
             _hasCompletedInitialization = false;
             _games.Clear();
             _mainMenuItems.Clear();
+            _diagnosticsMenuItems.Clear();
 
             _mainMenuItems.Add("Systems");
             _mainMenuItems.Add("Games");
             _mainMenuItems.Add("Diagnostics");
+
+            _diagnosticsMenuItems.Add("Rescan Library");
+            _diagnosticsMenuItems.Add("Refresh Diagnostics");
+            _diagnosticsMenuItems.Add("Exit Application");
 
             ApplyGameCatalog(gameData?.Games);
 
@@ -295,6 +356,7 @@ namespace ArcadeFrontend.ViewModels
             : startupDiagnosticsText;
 
             SelectedMenuIndex = 0;
+            SelectedDiagnosticsIndex = 0;
 
             if (_games.Count > 0)
             {
@@ -395,6 +457,18 @@ namespace ArcadeFrontend.ViewModels
             {
                 switch (e.Action)
                 {
+                    case InputAction.Up:
+                    case InputAction.Left:
+                        MoveDiagnosticsSelection(-1);
+                        break;
+                    case InputAction.Down:
+                    case InputAction.Right:
+                        MoveDiagnosticsSelection(1);
+                        break;
+                    case InputAction.Select:
+                    case InputAction.Start:
+                        ExecuteDiagnosticsSelection();
+                        break;
                     case InputAction.Back:
                         HandleBackAction();
                         break;
@@ -489,7 +563,46 @@ namespace ArcadeFrontend.ViewModels
             StatusMessage = $"Selected: {SelectedMenuItem}";
             EmptyStateMessage = _games.Count > 0
                 ? "Choose an option from the main menu."
-                : "No games were loaded. Diagnostics and Exit are still available.";
+                : "No games were loaded. Diagnostics is still available.";
+        }
+
+        private void MoveDiagnosticsSelection(int delta)
+        {
+            if (_diagnosticsMenuItems.Count == 0)
+            {
+                return;
+            }
+
+            var newIndex = SelectedDiagnosticsIndex + delta;
+            if (newIndex < 0)
+            {
+                newIndex = _diagnosticsMenuItems.Count - 1;
+            }
+            else if (newIndex >= _diagnosticsMenuItems.Count)
+            {
+                newIndex = 0;
+            }
+
+            SelectedDiagnosticsIndex = newIndex;
+        }
+
+        private void ExecuteDiagnosticsSelection()
+        {
+            switch (SelectedDiagnosticsItem)
+            {
+                case "Rescan Library":
+                    RescanLibrary();
+                    RefreshDiagnostics();
+                    break;
+
+                case "Refresh Diagnostics":
+                    RefreshDiagnostics();
+                    break;
+
+                case "Exit Application":
+                    ExitApplication();
+                    break;
+            }
         }
 
         private void LaunchSelectedGame()
@@ -563,6 +676,8 @@ namespace ArcadeFrontend.ViewModels
             OnPropertyChanged(nameof(RightPanelBody));
             OnPropertyChanged(nameof(SelectedGame));
             OnPropertyChanged(nameof(SelectedMenuItem));
+            OnPropertyChanged(nameof(SelectedDiagnosticsItem));
+            OnPropertyChanged(nameof(DiagnosticsVisibility));
         }
 
         private void RescanLibrary()

@@ -138,6 +138,28 @@
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
+
+                    <ListBox Grid.Row="2"
+                             ItemsSource="{Binding DiagnosticsMenuItems}"
+                             SelectedIndex="{Binding SelectedDiagnosticsIndex, Mode=TwoWay}"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             Foreground="White"
+                             FontSize="22"
+                             Visibility="{Binding DiagnosticsVisibility}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Border Padding="14,12"
+                                        Margin="0,0,0,10"
+                                        Background="#252526"
+                                        CornerRadius="8">
+                                    <TextBlock Text="{Binding}"
+                                            FontWeight="SemiBold"
+                                            FontSize="22"/>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
                 </Grid>
             </Border>
 
@@ -173,27 +195,28 @@
 
                 <WrapPanel Grid.Row="1"
                            Margin="0,0,0,16">
-<WrapPanel Grid.Row="1" Margin="0,0,0,16">
-    <Button Content="Select / Launch"
-            Click="OnSelectClicked"
-            Padding="18,10"
-            Margin="0,0,12,0"
-            FontSize="16"/>
-    <Button Content="Back"
-            Click="OnBackClicked"
-            Padding="18,10"
-            Margin="0,0,12,0"
-            FontSize="16"/>
-    <Button Content="Diagnostics"
-            Click="OnDiagnosticsClicked"
-            Padding="18,10"
-            Margin="0,0,12,0"
-            FontSize="16"/>
-    <Button Content="Exit"
-            Click="OnExitClicked"
-            Padding="18,10"
-            FontSize="16"/>
-</WrapPanel>
+                    <WrapPanel Grid.Row="1"
+                               Margin="0,0,0,16">
+                        <Button Content="Select / Launch"
+                                Click="OnSelectClicked"
+                                Padding="18,10"
+                                Margin="0,0,12,0"
+                                FontSize="16"/>
+                        <Button Content="Back"
+                                Click="OnBackClicked"
+                                Padding="18,10"
+                                Margin="0,0,12,0"
+                                FontSize="16"/>
+                        <Button Content="Diagnostics"
+                                Click="OnDiagnosticsClicked"
+                                Padding="18,10"
+                                Margin="0,0,12,0"
+                                FontSize="16"/>
+                        <Button Content="Exit"
+                                Click="OnExitClicked"
+                                Padding="18,10"
+                                FontSize="16"/>
+                    </WrapPanel>
                 </WrapPanel>
 
                 <Border Grid.Row="2"

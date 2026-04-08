@@ -1,18 +1,26 @@
-[
-  {
-    "SourceId": "mame",
-    "RootPath": "F:\\Arcade\\ROMs\\Arcade\\MAME",
-    "Platform": "Arcade",
-    "EmulatorProfileKey": "mame",
-    "SearchPatterns": [ "*.zip" ],
-    "UseFilenameWithoutExtensionAsLaunchTarget": true
-  },
-  {
-    "SourceId": "ps2",
-    "RootPath": "F:\\Arcade\\ROMs\\Console\\PS2",
-    "Platform": "PS2",
-    "EmulatorProfileKey": "pcsx2",
-    "SearchPatterns": [ "*.iso", "*.bin" ],
-    "UseFullPathAsLaunchTarget": true
-  }
-]
+{
+  "Sources": [
+    {
+      "SourceId": "mame",
+      "RootPath": "F:\\Arcade\\ROMs\\Arcade\\MAME",
+      "Platform": "Arcade",
+      "EmulatorProfileKey": "mame",
+      "SearchPatterns": [ "*.zip" ],
+      "Recurse": false,
+      "UseFilenameWithoutExtensionAsLaunchTarget": true,
+      "UseFullPathAsLaunchTarget": false,
+      "IsEnabled": true
+    },
+    {
+      "SourceId": "ps2",
+      "RootPath": "F:\\Arcade\\ROMs\\Console\\PS2",
+      "Platform": "PS2",
+      "EmulatorProfileKey": "pcsx2",
+      "SearchPatterns": [ "*.bin", "*.iso" ],
+      "Recurse": true,
+      "UseFilenameWithoutExtensionAsLaunchTarget": false,
+      "UseFullPathAsLaunchTarget": true,
+      "IsEnabled": true
+    }
+  ]
+}

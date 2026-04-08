@@ -2,22 +2,22 @@
   {
     "Key": "mame",
     "DisplayName": "MAME",
-    "ExecutablePath": "C:\\Arcade\\Emulators\\MAME\\mame.exe",
-    "WorkingDirectory": "C:\\Arcade\\Emulators\\MAME",
+    "ExecutablePath": "C:\\Emulators\\MAME\\mame.exe",
+    "WorkingDirectory": "C:\\Emulators\\MAME",
     "IsEnabled": true
   },
   {
     "Key": "pcsx2",
     "DisplayName": "PCSX2",
-    "ExecutablePath": "C:\\Arcade\\Emulators\\PCSX2\\pcsx2-qt.exe",
-    "WorkingDirectory": "C:\\Arcade\\Emulators\\PCSX2",
+    "ExecutablePath": "C:\\PCSX2\\pcsx2-qt.exe",
+    "WorkingDirectory": "C:\\PCSX2",
     "IsEnabled": true
   },
   {
     "Key": "retroarch",
     "DisplayName": "RetroArch",
-    "ExecutablePath": "C:\\Arcade\\Emulators\\RetroArch\\retroarch.exe",
-    "WorkingDirectory": "C:\\Arcade\\Emulators\\RetroArch",
+    "ExecutablePath": "C:\\RetroArch\\retroarch.exe",
+    "WorkingDirectory": "C:\\RetroArch",
     "IsEnabled": true
   }
 ]
