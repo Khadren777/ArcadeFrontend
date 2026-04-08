@@ -1,7 +1,4 @@
 using ArcadeFrontend.Models;
-using System.Linq;
-using ArcadeFrontend.Models;
-using ArcadeFrontend.Services;
 
 /// <summary>
 /// Provides summarized admin diagnostics for the frontend.

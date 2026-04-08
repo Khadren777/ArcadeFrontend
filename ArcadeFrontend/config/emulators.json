@@ -1,23 +1,9 @@
 [
   {
-    "Key": "mame",
-    "DisplayName": "MAME",
-    "ExecutablePath": "Emulators\\MAME\\mame.exe",
-    "ArgumentTemplate": "{rom}",
-    "WorkingDirectory": "Emulators\\MAME"
-  },
-  {
-    "Key": "snes9x",
-    "DisplayName": "Snes9x",
-    "ExecutablePath": "Emulators\\Snes9x\\snes9x-x64.exe",
-    "ArgumentTemplate": "{rom}",
-    "WorkingDirectory": "Emulators\\Snes9x"
-  },
-  {
-    "Key": "duckstation",
-    "DisplayName": "DuckStation",
-    "ExecutablePath": "Emulators\\DuckStation\\duckstation-qt-x64-ReleaseLTCG.exe",
-    "ArgumentTemplate": "--fullscreen \"{rom}\"",
-    "WorkingDirectory": "Emulators\\DuckStation"
+    "Key": "pcsx2",
+    "DisplayName": "PCSX2",
+    "ExecutablePath": "C:\\PCSX2\\pcsx2-qt.exe",
+    "WorkingDirectory": "C:\\PCSX2",
+    "IsEnabled": true
   }
 ]
