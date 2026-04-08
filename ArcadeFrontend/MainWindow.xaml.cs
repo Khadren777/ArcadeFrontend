@@ -80,7 +80,11 @@ namespace ArcadeFrontend
                 }
 
                 var startupData = startupResult.Data;
-                _mainViewModel.Initialize(startupData.GameData, startupData.EmulatorProfiles);
+                _mainViewModel.Initialize(
+                startupData.GameData,
+                startupData.EmulatorProfiles,
+                "MainMenu",
+                _diagnosticsSummaryBuilder.BuildStartupSummary(startupData));
 
                 if (!startupData.CanContinue)
                 {
@@ -95,25 +99,25 @@ namespace ArcadeFrontend
         }
 
 
-private void OnSelectClicked(object sender, RoutedEventArgs e)
-{
-    _inputService.RegisterExternalInput(InputAction.Select, "UI");
-}
+        private void OnSelectClicked(object sender, RoutedEventArgs e)
+        {
+            _inputService.RegisterExternalInput(InputAction.Select, "UI");
+        }
 
-private void OnBackClicked(object sender, RoutedEventArgs e)
-{
-    _inputService.RegisterExternalInput(InputAction.Back, "UI");
-}
+        private void OnBackClicked(object sender, RoutedEventArgs e)
+        {
+            _inputService.RegisterExternalInput(InputAction.Back, "UI");
+        }
 
-private void OnDiagnosticsClicked(object sender, RoutedEventArgs e)
-{
-    _inputService.RegisterExternalInput(InputAction.Admin, "UI");
-}
+        private void OnDiagnosticsClicked(object sender, RoutedEventArgs e)
+        {
+            _inputService.RegisterExternalInput(InputAction.Admin, "UI");
+        }
 
-private void OnExitClicked(object sender, RoutedEventArgs e)
-{
-    _inputService.RegisterExternalInput(InputAction.Exit, "UI");
-}
+        private void OnExitClicked(object sender, RoutedEventArgs e)
+        {
+            _inputService.RegisterExternalInput(InputAction.Exit, "UI");
+        }
 
         private void ConfigureInputBindings()
         {

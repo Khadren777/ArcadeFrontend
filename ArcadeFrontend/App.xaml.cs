@@ -1,4 +1,3 @@
-using System;
 using System.IO;
 using System.Windows;
 using ArcadeFrontend.Services;
@@ -70,6 +69,7 @@ namespace ArcadeFrontend
             var inputService = new InputAbstractionService(_loggingService!);
             var inputComboService = new InputComboService(_loggingService!);
             var gameLauncherService = new GameLauncherService(_loggingService!);
+            var libraryScannerService = new LibraryScannerService(pathService, _loggingService!);
             var navigationStateService = new NavigationStateService(_loggingService!);
             var idleService = new IdleService(_loggingService!);
             var diagnosticsSummaryBuilder = new DiagnosticsSummaryBuilder();
@@ -80,7 +80,8 @@ namespace ArcadeFrontend
                 pathService,
                 _loggingService!,
                 startupValidationService,
-                gameDataService);
+                gameDataService,
+                libraryScannerService);
 
             _loggingService!.Info(
                 nameof(App),
@@ -93,6 +94,7 @@ namespace ArcadeFrontend
                 inputService,
                 gameLauncherService,
                 gameDataService,
+                libraryScannerService,
                 navigationStateService,
                 attractModeCoordinator,
                 _loggingService!,

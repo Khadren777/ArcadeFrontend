@@ -28,17 +28,20 @@ namespace ArcadeFrontend.Services
         private readonly ILoggingService _loggingService;
         private readonly IStartupValidationService _startupValidationService;
         private readonly IGameDataService _gameDataService;
+        private readonly ILibraryScannerService _libraryScannerService;
 
         public AppStartupCoordinator(
             IPathService pathService,
             ILoggingService loggingService,
             IStartupValidationService startupValidationService,
-            IGameDataService gameDataService)
+            IGameDataService gameDataService,
+            ILibraryScannerService libraryScannerService)
         {
             _pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
             _loggingService = loggingService ?? throw new ArgumentNullException(nameof(loggingService));
             _startupValidationService = startupValidationService ?? throw new ArgumentNullException(nameof(startupValidationService));
             _gameDataService = gameDataService ?? throw new ArgumentNullException(nameof(gameDataService));
+            _libraryScannerService = libraryScannerService ?? throw new ArgumentNullException(nameof(libraryScannerService));
         }
 
         public OperationResult<AppStartupResult> Initialize()
@@ -62,13 +65,35 @@ namespace ArcadeFrontend.Services
                 }
 
                 var emulatorProfilesPath = GetExistingEmulatorProfilePath();
-                var gamesConfigPath = _pathService.GetGamesConfigPath();
+                var generatedGamesConfigPath = _pathService.GetGeneratedGamesConfigPath();
+                var manualGamesConfigPath = _pathService.GetGamesConfigPath();
+                var librarySourcesPath = _pathService.GetLibrarySourcesPath();
                 var appSettingsPath = _pathService.GetAppSettingsPath();
 
+                var libraryScanResult = _libraryScannerService.EnsureCatalogAndLoad();
+                statusMessages.Add(libraryScanResult.UserMessage);
+
+                if (libraryScanResult.IsSuccess && libraryScanResult.Data != null)
+                {
+                    statusMessages.Add(_libraryScannerService.LastScanSummary);
+                }
+                else
+                {
+                    _loggingService.Warning(nameof(AppStartupCoordinator), "Library scan did not complete successfully.", libraryScanResult.TechnicalMessage);
+                }
+
+                var gamesConfigPath = File.Exists(generatedGamesConfigPath)
+                    ? generatedGamesConfigPath
+                    : manualGamesConfigPath;
+
+                statusMessages.Add(File.Exists(generatedGamesConfigPath)
+                    ? $"Using generated game catalog: {generatedGamesConfigPath}"
+                    : $"Using manual game catalog: {manualGamesConfigPath}");
+
                 _loggingService.Info(
-                    nameof(AppStartupCoordinator),
-                    "Startup files resolved.",
-                    $"Games: {gamesConfigPath} | EmulatorProfiles: {emulatorProfilesPath} | AppSettings: {appSettingsPath}");
+    nameof(AppStartupCoordinator),
+    "Startup files resolved.",
+    $"Games: {gamesConfigPath} | GeneratedGames: {generatedGamesConfigPath} | LibrarySources: {librarySourcesPath} | EmulatorProfiles: {emulatorProfilesPath} | AppSettings: {appSettingsPath}");
 
                 var emulatorProfiles = LoadEmulatorProfiles(emulatorProfilesPath, statusMessages);
                 if (emulatorProfiles.Count == 0)
@@ -94,6 +119,8 @@ namespace ArcadeFrontend.Services
                     {
                         emulatorProfilesPath,
                         gamesConfigPath,
+                        generatedGamesConfigPath,
+                        librarySourcesPath,
                         appSettingsPath
                     },
                     EmulatorProfiles = emulatorProfiles

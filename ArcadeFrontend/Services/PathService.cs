@@ -18,6 +18,8 @@ namespace ArcadeFrontend.Services
         string ResolveInData(params string[] segments);
 
         string GetGamesConfigPath();
+        string GetGeneratedGamesConfigPath();
+        string GetLibrarySourcesPath();
         string GetEmulatorProfilesPath();
         string GetLegacyEmulatorsPath();
         string GetRecentGamesPath();
@@ -60,6 +62,8 @@ namespace ArcadeFrontend.Services
         public string ResolveInData(params string[] segments) => CombineValidatedPath(DataDirectory, segments, nameof(segments));
 
         public string GetGamesConfigPath() => Path.Combine(ConfigDirectory, "games.json");
+        public string GetGeneratedGamesConfigPath() => Path.Combine(ConfigDirectory, "games.generated.json");
+        public string GetLibrarySourcesPath() => Path.Combine(ConfigDirectory, "librarySources.json");
         public string GetEmulatorProfilesPath() => Path.Combine(ConfigDirectory, "emulatorProfiles.json");
         public string GetLegacyEmulatorsPath() => Path.Combine(ConfigDirectory, "emulators.json");
         public string GetRecentGamesPath() => Path.Combine(ConfigDirectory, "recentgames.json");

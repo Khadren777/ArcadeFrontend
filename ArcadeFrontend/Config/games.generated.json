@@ -1,0 +1,101 @@
+{
+  "Games": [
+    {
+      "Id": "1942",
+      "Title": "1942",
+      "Platform": "Arcade",
+      "LaunchTarget": "1942",
+      "EmulatorProfileKey": "mame",
+      "Description": "Capcom vertical shooter."
+    },
+    {
+      "Id": "1943",
+      "Title": "1943",
+      "Platform": "Arcade",
+      "LaunchTarget": "1943",
+      "EmulatorProfileKey": "mame",
+      "Description": "Capcom vertical shooter sequel."
+    },
+    {
+      "Id": "1944",
+      "Title": "1944: The Loop Master",
+      "Platform": "Arcade",
+      "LaunchTarget": "1944",
+      "EmulatorProfileKey": "mame",
+      "Description": "Later Capcom shooter."
+    },
+    {
+      "Id": "19xx",
+      "Title": "19XX: The War Against Destiny",
+      "Platform": "Arcade",
+      "LaunchTarget": "19xx",
+      "EmulatorProfileKey": "mame",
+      "Description": "Capcom CPS-2 shooter."
+    },
+    {
+      "Id": "2020bb",
+      "Title": "2020 Super Baseball",
+      "Platform": "Arcade",
+      "LaunchTarget": "2020bb",
+      "EmulatorProfileKey": "mame",
+      "Description": "Neo Geo futuristic baseball."
+    },
+    {
+      "Id": "3wonders",
+      "Title": "Three Wonders",
+      "Platform": "Arcade",
+      "LaunchTarget": "3wonders",
+      "EmulatorProfileKey": "mame",
+      "Description": "Capcom multi-game compilation."
+    },
+    {
+      "Id": "aburner",
+      "Title": "After Burner",
+      "Platform": "Arcade",
+      "LaunchTarget": "aburner",
+      "EmulatorProfileKey": "mame",
+      "Description": "Sega jet combat classic."
+    },
+    {
+      "Id": "aerofgt",
+      "Title": "Aero Fighters",
+      "Platform": "Arcade",
+      "LaunchTarget": "aerofgt",
+      "EmulatorProfileKey": "mame",
+      "Description": "Arcade shooter."
+    },
+    {
+      "Id": "agallet",
+      "Title": "Air Gallet",
+      "Platform": "Arcade",
+      "LaunchTarget": "agallet",
+      "EmulatorProfileKey": "mame",
+      "Description": "Arcade shooter."
+    },
+    {
+      "Id": "airduel",
+      "Title": "Air Duel",
+      "Platform": "Arcade",
+      "LaunchTarget": "airduel",
+      "EmulatorProfileKey": "mame",
+      "Description": "Irem shooter."
+    },
+    {
+      "Id": "ajax",
+      "Title": "Ajax / Typhoon",
+      "Platform": "Arcade",
+      "LaunchTarget": "ajax",
+      "EmulatorProfileKey": "mame",
+      "Description": "Konami shooter."
+    },
+    {
+      "Id": "time-crisis-2",
+      "Title": "Time Crisis II",
+      "Platform": "PS2",
+      "LaunchTarget": "F:\\Arcade\\ROMs\\Console\\PS2\\Time Crisis II\\Time Crisis II (USA).bin",
+      "Arguments": "\"F:\\Arcade\\ROMs\\Console\\PS2\\Time Crisis II\\Time Crisis II (USA).bin\"",
+      "EmulatorProfileKey": "pcsx2",
+      "Description": "PS2 version for reveal build."
+    }
+  ]
+}

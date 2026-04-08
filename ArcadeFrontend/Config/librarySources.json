@@ -1,0 +1,18 @@
+[
+  {
+    "SourceId": "mame",
+    "RootPath": "F:\\Arcade\\ROMs\\Arcade\\MAME",
+    "Platform": "Arcade",
+    "EmulatorProfileKey": "mame",
+    "SearchPatterns": [ "*.zip" ],
+    "UseFilenameWithoutExtensionAsLaunchTarget": true
+  },
+  {
+    "SourceId": "ps2",
+    "RootPath": "F:\\Arcade\\ROMs\\Console\\PS2",
+    "Platform": "PS2",
+    "EmulatorProfileKey": "pcsx2",
+    "SearchPatterns": [ "*.iso", "*.bin" ],
+    "UseFullPathAsLaunchTarget": true
+  }
+]
