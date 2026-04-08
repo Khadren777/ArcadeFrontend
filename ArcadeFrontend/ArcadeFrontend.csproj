@@ -13,8 +13,6 @@
     <None Remove="Config\emulatorProfiles.json" />
     <None Remove="Config\recentgames.json" />
     <None Remove="Config\appsettings.json" />
-    <None Remove="Config\games.generated.json" />
-    <None Remove="Config\games.overrides.json" />
     <None Remove="Config\librarySources.json" />
 </ItemGroup>
 
@@ -23,12 +21,6 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Config\emulatorProfiles.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Config\games.generated.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Config\games.overrides.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Config\librarySources.json">

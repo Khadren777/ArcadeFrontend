@@ -105,37 +105,40 @@
                         </ListBox.ItemTemplate>
                     </ListBox>
 
-                    <ListBox Grid.Row="2"
+                    <ListBox x:Name="GamesListBox"
+                             Grid.Row="2"
                              ItemsSource="{Binding Games}"
                              SelectedIndex="{Binding SelectedIndex, Mode=TwoWay}"
+                             SelectionChanged="OnGamesSelectionChanged"
                              Background="Transparent"
                              BorderThickness="0"
                              Foreground="White"
                              FontSize="18"
                              Visibility="{Binding GamesVisibility}"
-                             ScrollViewer.VerticalScrollBarVisibility="Auto">
+                             ScrollViewer.VerticalScrollBarVisibility="Hidden"
+                             ScrollViewer.CanContentScroll="False">
                         <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <Border Padding="12,10"
-                                        Margin="0,0,0,8"
-                                        Background="#252526"
-                                        CornerRadius="8">
-                                    <StackPanel>
-                                        <TextBlock Text="{Binding Title}"
-                                                   FontWeight="SemiBold"
-                                                   FontSize="18"/>
-                                        <TextBlock Text="{Binding Platform}"
-                                                   FontSize="13"
-                                                   Opacity="0.75"
-                                                   Margin="0,4,0,0"/>
-                                        <TextBlock Text="{Binding Description}"
-                                                   FontSize="12"
-                                                   Opacity="0.65"
-                                                   TextWrapping="Wrap"
-                                                   Margin="0,4,0,0"/>
-                                    </StackPanel>
-                                </Border>
-                            </DataTemplate>
+                        <DataTemplate>
+                            <Border Padding="12,10"
+                                    Margin="0,0,0,8"
+                                    Background="#252526"
+                                    CornerRadius="8">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Title}"
+                                               FontWeight="SemiBold"
+                                               FontSize="18"/>
+                                    <TextBlock Text="{Binding Platform}"
+                                               FontSize="13"
+                                               Opacity="0.75"
+                                               Margin="0,4,0,0"/>
+                                    <TextBlock Text="{Binding Description}"
+                                               FontSize="12"
+                                               Opacity="0.65"
+                                               TextWrapping="Wrap"
+                                               Margin="0,4,0,0"/>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
 
@@ -154,8 +157,8 @@
                                         Background="#252526"
                                         CornerRadius="8">
                                     <TextBlock Text="{Binding}"
-                                            FontWeight="SemiBold"
-                                            FontSize="22"/>
+                                               FontWeight="SemiBold"
+                                               FontSize="22"/>
                                 </Border>
                             </DataTemplate>
                         </ListBox.ItemTemplate>

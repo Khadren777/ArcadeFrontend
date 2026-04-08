@@ -1,7 +1,4 @@
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -25,6 +22,7 @@ namespace ArcadeFrontend.ViewModels
         private readonly ObservableCollection<string> _mainMenuItems = [];
         private readonly ObservableCollection<string> _diagnosticsMenuItems = [];
         private bool _hasCompletedInitialization;
+        private bool _isApplyingCatalog;
 
         [ObservableProperty]
         private int selectedIndex;
@@ -264,14 +262,13 @@ namespace ArcadeFrontend.ViewModels
 
         partial void OnSelectedIndexChanged(int oldValue, int newValue)
         {
-            if (!_hasCompletedInitialization)
+            if (!_hasCompletedInitialization || _isApplyingCatalog)
             {
                 return;
             }
 
             if (newValue < 0 || newValue >= _games.Count)
             {
-                SelectedIndex = oldValue;
                 return;
             }
 
@@ -682,44 +679,63 @@ namespace ArcadeFrontend.ViewModels
 
         private void RescanLibrary()
         {
-            var result = _libraryScannerService.RescanCatalog();
-            if (!result.IsSuccess || result.Data == null)
+            try
             {
-                StatusMessage = result.UserMessage;
-                DiagnosticsText = _diagnosticsSummaryBuilder.BuildOperationFailureSummary("Library Rescan", result);
-                return;
+                var result = _libraryScannerService.RescanCatalog();
+                if (!result.IsSuccess || result.Data == null)
+                {
+                    StatusMessage = result.UserMessage;
+                    DiagnosticsText = _diagnosticsSummaryBuilder.BuildOperationFailureSummary("Library Rescan", result);
+                    return;
+                }
+
+                ApplyGameCatalog(result.Data.Games);
+
+                StatusMessage = $"Library scan complete. Games: {result.Data.GameCount} | Added: {result.Data.AddedCount} | Removed: {result.Data.RemovedCount}";
+                EmptyStateMessage = _games.Count > 0
+                    ? "Choose an option from the main menu."
+                    : "No games were discovered in the configured library sources.";
+
+                DiagnosticsText = _libraryScannerService.LastScanSummary;
             }
-
-            ApplyGameCatalog(result.Data.Games);
-
-            StatusMessage = $"Library scan complete. Games: {result.Data.GameCount} | Added: {result.Data.AddedCount} | Removed: {result.Data.RemovedCount}";
-            EmptyStateMessage = _games.Count > 0
-                ? "Choose an option from the main menu."
-                : "No games were discovered in the configured library sources.";
-
-            DiagnosticsText = _libraryScannerService.LastScanSummary;
+            catch (Exception ex)
+            {
+                StatusMessage = "Library rescan failed.";
+                DiagnosticsText = ex.ToString();
+                _loggingService.Error(nameof(MainViewModel), "Unhandled exception during library rescan.", ex, ex.Message);
+            }
         }
 
         private void ApplyGameCatalog(IReadOnlyList<GameDefinition>? games)
         {
-            _games.Clear();
+            _isApplyingCatalog = true;
 
-            if (games != null)
+            try
             {
-                foreach (var game in games.Where(g => g.IsEnabled && !g.IsHidden))
+                _games.Clear();
+
+                if (games != null)
                 {
-                    _games.Add(game);
+                    foreach (var game in games.Where(g => g.IsEnabled && !g.IsHidden))
+                    {
+                        _games.Add(game);
+                    }
+                }
+
+                if (_games.Count > 0)
+                {
+                    SelectedIndex = 0;
+                    UpdateSelectedGameState("Catalog applied");
+                }
+                else
+                {
+                    SelectedIndex = -1;
+                    _navigationStateService.SetSelectedGame(null, -1, null, "Catalog applied with no games");
                 }
             }
-
-            if (_games.Count > 0)
+            finally
             {
-                SelectedIndex = 0;
-                UpdateSelectedGameState("Catalog applied");
-            }
-            else
-            {
-                SelectedIndex = 0;
+                _isApplyingCatalog = false;
             }
 
             RefreshRightPanel();

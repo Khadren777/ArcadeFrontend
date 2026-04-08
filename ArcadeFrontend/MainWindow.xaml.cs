@@ -1,12 +1,11 @@
-using System;
-using System.Collections.Generic;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Windows;
 using System.Windows.Input;
 using ArcadeFrontend.Models;
 using ArcadeFrontend.Services;
 using ArcadeFrontend.ViewModels;
+using System.Windows.Controls;
+using System.Windows.Media;
 
 namespace ArcadeFrontend
 {
@@ -20,7 +19,7 @@ namespace ArcadeFrontend
         private readonly IIdleService _idleService;
         private readonly IAttractModeCoordinator _attractModeCoordinator;
         private readonly IDiagnosticsSummaryBuilder _diagnosticsSummaryBuilder;
-        private readonly ArcadeFrontend.ViewModels.MainViewModel _mainViewModel;
+        private readonly MainViewModel _mainViewModel;
         private readonly IInputComboService _inputComboService;
         private readonly IAppSettingsService _appSettingsService;
         private readonly RevealMediaService _revealMediaService;
@@ -96,6 +95,86 @@ namespace ArcadeFrontend
                 _loggingService.Critical(nameof(MainWindow), "Unhandled exception during window load.", ex, ex.Message);
                 MessageBox.Show(ex.ToString(), "Fatal Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        private void OnGamesSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (sender is not ListBox listBox || listBox.SelectedItem == null)
+            {
+                return;
+            }
+
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                ScrollSelectedItemTowardCenter(listBox);
+            }), System.Windows.Threading.DispatcherPriority.Background);
+        }
+
+        private void ScrollSelectedItemTowardCenter(ListBox listBox)
+        {
+            var scrollViewer = FindDescendant<ScrollViewer>(listBox);
+            if (scrollViewer == null)
+            {
+                return;
+            }
+
+            if (listBox.ItemContainerGenerator.ContainerFromItem(listBox.SelectedItem) is not ListBoxItem selectedItem)
+            {
+                return;
+            }
+
+            var itemTransform = selectedItem.TransformToAncestor(scrollViewer);
+            var itemBounds = itemTransform.TransformBounds(new Rect(new Point(0, 0), selectedItem.RenderSize));
+
+            var itemTop = itemBounds.Top + scrollViewer.VerticalOffset;
+            var itemHeight = itemBounds.Height;
+            var viewportHeight = scrollViewer.ViewportHeight;
+
+            if (viewportHeight <= 0 || itemHeight <= 0)
+            {
+                return;
+            }
+
+            var targetOffset = itemTop - ((viewportHeight - itemHeight) / 2.0);
+            var maxOffset = Math.Max(0, scrollViewer.ExtentHeight - viewportHeight);
+
+            if (targetOffset < 0)
+            {
+                targetOffset = 0;
+            }
+            else if (targetOffset > maxOffset)
+            {
+                targetOffset = maxOffset;
+            }
+
+            scrollViewer.ScrollToVerticalOffset(targetOffset);
+        }
+
+        private static T? FindDescendant<T>(DependencyObject root) where T : DependencyObject
+        {
+            if (root == null)
+            {
+                return null;
+            }
+
+            var childCount = VisualTreeHelper.GetChildrenCount(root);
+            for (var i = 0; i < childCount; i++)
+            {
+                var child = VisualTreeHelper.GetChild(root, i);
+
+                if (child is T typedChild)
+                {
+                    return typedChild;
+                }
+
+                var descendant = FindDescendant<T>(child);
+                if (descendant != null)
+                {
+                    return descendant;
+                }
+            }
+
+            return null;
         }
 
 
